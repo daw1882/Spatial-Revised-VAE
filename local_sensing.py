@@ -9,7 +9,7 @@ import torch.nn as nn
 
 from collections import OrderedDict
 
-from utils import compute_kernel_size
+from utils import compute_kernel_sizes
 
 
 class LocalSensingNet(nn.Module):
@@ -44,7 +44,7 @@ class LocalSensingNet(nn.Module):
         """
         input_size = spectral_bands if index == 0 else ld
         output_size = ld if index < (self.num_layers-1) else ld//4
-        kernel_size = compute_kernel_size(s, index)
+        kernel_size = self.kernel_sizes[index]
 
         layer_name = f"Layer {index}"
         cnn = nn.Conv2d(input_size, output_size, kernel_size)
@@ -53,6 +53,7 @@ class LocalSensingNet(nn.Module):
     def __init__(self, s, ld, spectral_bands, num_layers=3):
         super(LocalSensingNet, self).__init__()
         self.num_layers = num_layers
+        self.kernel_sizes = compute_kernel_sizes(s, num_layers)
 
         cnn_layer_list = []
         for index in range(num_layers):

@@ -9,8 +9,6 @@ import torch.nn as nn
 
 from collections import OrderedDict
 
-from utils import compute_kernel_size
-
 class SequentialSensingNet(nn.Module):
     """
     The LSTM network for sequential sensing.
@@ -34,7 +32,7 @@ class SequentialSensingNet(nn.Module):
     N : the batch size for the LSTM.
     """
 
-    def __setup_layer(self, s, index, spectral_bands):
+    def __setup_layer(self, index, ld):
         """
         Setup one of the LSTM layers.
 
@@ -42,21 +40,23 @@ class SequentialSensingNet(nn.Module):
         ------
         s : The neighborhood window size.
         index: The layer index. Starting at 0.
-        spectral_bands : The number of spectral bands.
+        ld: The latent dimension.
         """
-        input_size = spectral_bands if index == 0 else compute_kernel_size(s, index - 1)
-        hidden_size = compute_kernel_size(s, index)
+        input_size = ld
+        hidden_size = ld
 
         layer_name = f"Layer {index}"
         lstm = nn.LSTM(input_size, hidden_size, num_layers=1)
         return (layer_name, lstm)
 
-    def __init__(self, s, ld, spectral_bands, lstm_layers=3) -> None:
+    def __init__(self, s, ld, lstm_layers=3) -> None:
         super(SequentialSensingNet, self).__init__()
         
         lstm_layer_list = []
-        for index in range(lstm_layers):
-            lstm_layer_list.append(self.__setup_layer(s, index, spectral_bands))
+        for index in range(lstm_layers - 1):
+            lstm_layer_list.append(self.__setup_layer(index, ld))
+
+        lstm_layer_list.append(self.__setup_layer(lstm_layers - 1, ld / 4))
 
         self.lstm_stack = nn.Sequential(OrderedDict(lstm_layer_list))
         self.avg_pooling = None # TODO: Setup average pooling layer.

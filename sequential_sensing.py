@@ -32,31 +32,46 @@ class SequentialSensingNet(nn.Module):
     N : the batch size for the LSTM.
     """
 
-    def __setup_layer(self, index, ld):
+    def __setup_layer(self, input_size, hidden_size, index):
         """
         Setup one of the LSTM layers.
 
         Params
         ------
-        s : The neighborhood window size.
+        input_size : The size of the input layer.
+        hidden_size : The size of the hidden layer.
         index: The layer index. Starting at 0.
-        ld: The latent dimension.
         """
-        input_size = ld
-        hidden_size = ld
 
         layer_name = f"Layer {index}"
         lstm = nn.LSTM(input_size, hidden_size, num_layers=1)
         return (layer_name, lstm)
 
-    def __init__(self, s, ld, lstm_layers=3) -> None:
+    def __init__(self, s, ld, spectral_bands, lstm_layers=3) -> None:
         super(SequentialSensingNet, self).__init__()
+        self.window_size = s
         
         lstm_layer_list = []
-        for index in range(lstm_layers - 1):
-            lstm_layer_list.append(self.__setup_layer(index, ld))
+        # for index in range(lstm_layers - 1):
+        #     lstm_layer_list.append(self.__setup_layer(index, ld))
 
-        lstm_layer_list.append(self.__setup_layer(lstm_layers - 1, ld / 4))
+        # lstm_layer_list.append(self.__setup_layer(lstm_layers - 1, ld / 4))
+
+        if lstm_layers == 1:
+            lstm_layer_list.append(self.__setup_layer(spectral_bands, ld // 4, 0))
+        else:
+            # Setup first layer
+            first_layer = self.__setup_layer(spectral_bands, ld, 0)
+            lstm_layer_list.append(first_layer)
+
+            # Setup middle layers
+            for i in range(1, lstm_layers - 1):
+                layer = self.__setup_layer(ld, ld, i)
+                lstm_layer_list.append(layer)
+
+            # Setup last layer
+            last_layer = self.__setup_layer(ld, ld // 4, lstm_layers - 1)
+            lstm_layer_list.append(last_layer)
 
         self.lstm_stack = nn.Sequential(OrderedDict(lstm_layer_list))
         self.avg_pooling = None # TODO: Setup average pooling layer.

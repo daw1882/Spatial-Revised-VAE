@@ -7,8 +7,6 @@
 import torch
 import torch.nn as nn
 
-from collections import OrderedDict
-
 class SequentialSensingNet(nn.Module):
     """
     The LSTM network for sequential sensing.
@@ -29,53 +27,51 @@ class SequentialSensingNet(nn.Module):
         of hidden layers.
     spectral_bands : The number of hyperspectral bands.
     lstm_layers : The number of stacked LSTM layers. Paper suggests 3 as a default.
-    N : the batch size for the LSTM.
     """
-
-    def __setup_layer(self, input_size, hidden_size, index):
-        """
-        Setup one of the LSTM layers.
-
-        Params
-        ------
-        input_size : The size of the input layer.
-        hidden_size : The size of the hidden layer.
-        index: The layer index. Starting at 0.
-        """
-
-        layer_name = f"Layer {index}"
-        lstm = nn.LSTM(input_size, hidden_size, num_layers=1)
-        return (layer_name, lstm)
 
     def __init__(self, s, ld, spectral_bands, lstm_layers=3) -> None:
         super(SequentialSensingNet, self).__init__()
         self.window_size = s
-        
-        lstm_layer_list = []
-        # for index in range(lstm_layers - 1):
-        #     lstm_layer_list.append(self.__setup_layer(index, ld))
 
-        # lstm_layer_list.append(self.__setup_layer(lstm_layers - 1, ld / 4))
-
+        # Setup stacked LSTM
         if lstm_layers == 1:
-            lstm_layer_list.append(self.__setup_layer(spectral_bands, ld // 4, 0))
+            self.lstm_stack = nn.LSTM(input_size=spectral_bands, hidden_size=ld // 4,
+                                  num_layers=lstm_layers)
         else:
-            # Setup first layer
-            first_layer = self.__setup_layer(spectral_bands, ld, 0)
-            lstm_layer_list.append(first_layer)
+            # All hidden sizes are ld except for the final layer, which is output
+            # as ld / 4.
+            stack = nn.LSTM(input_size=spectral_bands, hidden_size=ld, num_layers=lstm_layers - 1)
+            final = nn.LSTM(input_size=ld, hidden_size=ld // 4, num_layers=1)
+            self.lstm_stack = nn.Sequential(stack, final)
 
-            # Setup middle layers
-            for i in range(1, lstm_layers - 1):
-                layer = self.__setup_layer(ld, ld, i)
-                lstm_layer_list.append(layer)
-
-            # Setup last layer
-            last_layer = self.__setup_layer(ld, ld // 4, lstm_layers - 1)
-            lstm_layer_list.append(last_layer)
-
-        self.lstm_stack = nn.Sequential(OrderedDict(lstm_layer_list))
-        self.avg_pooling = None # TODO: Setup average pooling layer.
+        # Setup average pooling
+        # Output from LSTM is tensor of shape (s x s, ld // 4)
+        # Pooling needs to get (1, ld // 4)
+        # Need to average along the s x s dimension.
+        self.average_pooling = nn.AvgPool1d(s * s)
 
     def forward(self, x):
-        pass
+        """
+        Perform the forward pass.
+
+        Parameters
+        ----------
+        x : The input data.
+            This should be a tensor of the shape (s^2, N) where s is the window
+            size, and N is the number of spectral bands.
+        """
+
+        # Run forward pass through LSTM, outputs a tensor (s^2, ld)
+        lstm_output = self.lstm_stack(x)
+
+        # Transpose output so that we can do average pooling
+        lstm_output_t = torch.transpose(lstm_output, 0, 1)
+
+        # Perform average pooling
+        pooled = self.average_pooling(lstm_output_t)
+
+        # Transpose back to (1, ld // 4)
+        result = torch.transpose(pooled, 0, 1)
+
+        return result
 

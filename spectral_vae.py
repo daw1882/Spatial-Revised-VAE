@@ -179,9 +179,9 @@ class SpectralSpatialEncoder(nn.Module):
         """
 
         # Split the data for each of the encoder stacks.
-        # Dimension of input: (S, S, N) or (N, S, S)
-        seq_sensing_data = self.extract_sequential_data(x)
         # Dimension of input: (SxS, N)
+        seq_sensing_data = self.extract_sequential_data(x)
+        # Dimension of input: (S, S, N)
         loc_sensing_data = self.extract_local_data(x)
         # Dimension of input: (1, N), the center pixel vector
         spectral_encoding_data = self.extract_spectral_data(x)

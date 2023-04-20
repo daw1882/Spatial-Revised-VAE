@@ -123,7 +123,7 @@ class SpectralSpatialEncoder(nn.Module):
 
         Parameters
         ----------
-        x : The input image tensor.
+        x : The input tensor.
         """
         # TODO: Implement
         pass
@@ -134,9 +134,19 @@ class SpectralSpatialEncoder(nn.Module):
 
         Parameters
         ----------
-        x : The input image tensor.
+        x : The input tensor.
         """
         # TODO: Implement
+        pass
+
+    def extract_spectral_data(self, x):
+        """
+        Extract the spectral sensing data.
+
+        Parameters
+        ----------
+        x : The input tensor.
+        """
         pass
 
     def split_mean_variance(self, spec_encoder_result) -> tuple:
@@ -157,6 +167,8 @@ class SpectralSpatialEncoder(nn.Module):
         # For now this is a tuple, so just return it.
         return spec_encoder_result
 
+    # Data Tensor: (#pixel vectors, SxS, N) (all at once)
+    # Data Tensor: (SxS, N) one at a time.
     def forward(self, x):
         """
         Perform the forward pass.
@@ -167,9 +179,12 @@ class SpectralSpatialEncoder(nn.Module):
         """
 
         # Split the data for each of the encoder stacks.
+        # Dimension of input: (S, S, N) or (N, S, S)
         seq_sensing_data = self.extract_sequential_data(x)
+        # Dimension of input: (SxS, N)
         loc_sensing_data = self.extract_local_data(x)
-        spectral_encoding_data = x
+        # Dimension of input: (1, N), the center pixel vector
+        spectral_encoding_data = self.extract_spectral_data(x)
 
         # Pass data to each encoder
         

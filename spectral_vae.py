@@ -175,7 +175,7 @@ class SpectralSpatialEncoder(nn.Module):
 
         Parameters
         ----------
-        x : The input image tensor.
+        x : The input tensor.
         """
 
         # Split the data for each of the encoder stacks.

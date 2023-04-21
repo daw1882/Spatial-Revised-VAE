@@ -6,6 +6,7 @@
 
 import torch
 import torch.nn as nn
+import numpy as np
 from sequential_sensing import SequentialSensingNet
 from local_sensing import LocalSensingNet
 
@@ -86,7 +87,25 @@ class SpectralEncoder(nn.Module):
         
         # TODO: Check if this is allowed, may need to convert this into a tensor.
         return (mean_vector, variance_vector)
-        
+
+def split_mean_variance(spec_encoder_result) -> tuple:
+    """
+    Return the mean vector and variance vector from the spectral encoding
+    output.
+
+    Parameters
+    ----------
+    spec_encoding_result: The output from spectral encoding network.
+
+    Returns
+    -------
+    A tuple containing the mean tensor in the first position and the
+    variance tensor in the second.
+    """
+
+    # For now this is a tuple, so just return it.
+    return spec_encoder_result
+
 class SpectralSpatialEncoder(nn.Module):
     """
     The combined encoder model. Uses the spatial features to modify the mean
@@ -149,24 +168,6 @@ class SpectralSpatialEncoder(nn.Module):
         """
         pass
 
-    def split_mean_variance(self, spec_encoder_result) -> tuple:
-        """
-        Return the mean vector and variance vector from the spectral encoding
-        output.
-
-        Parameters
-        ----------
-        spec_encoding_result: The output from spectral encoding network.
-
-        Returns
-        -------
-        A tuple containing the mean tensor in the first position and the
-        variance tensor in the second.
-        """
-
-        # For now this is a tuple, so just return it.
-        return spec_encoder_result
-
     # Data Tensor: (#pixel vectors, SxS, N) (all at once)
     # Data Tensor: (SxS, N) one at a time.
     def forward(self, x):
@@ -203,5 +204,54 @@ class SpectralSpatialEncoder(nn.Module):
 
         # TODO: Verify that this is acceptable output format. May have to turn into a tensor.
         return (mv, vv)
+
+
+class Decoder(nn.Module):
+
+    def __init__(self, ld, spectral_bands, layers) -> None:
+        """
+        Initialize the module.
+
+        Parameters
+        ----------
+        ld : The number of dimensions in the latent space.
+        spectral_bands : The number of spectral bands.
+        layers : The number of layers in the spatial encoder.
+        """
+        super(Decoder, self).__init__()
+
+        hidden_size = ld
+        output_size = spectral_bands
+
+        self.ld = ld
+        self.activation = nn.ReLU()
+        self.layers = []
+
+        if layers <= 1:
+            self.layers.append(nn.Linear(ld, output_size))
+            return
+
+        self.layers.append(nn.Linear(ld, hidden_size))
+        # Middle layers
+        for _ in range(1, layers - 1):
+            self.layers.append(nn.Linear(hidden_size, hidden_size))
+
+        self.layers.append(nn.Linear(hidden_size, output_size))
+
+    def forward(self, x):
+        """
+        Perform forward pass.
+        """
+
+        mean, variance = split_mean_variance(x)
+        gaussian_noise = np.random.normal(0, 1, size=(1, self.ld))
+        
+        sample = mean + (gaussian_noise * variance)
+        xhat = sample
+
+        for layer in self.layers:
+            xhat = self.activation(layer(xhat))
+
+        return xhat
 
 

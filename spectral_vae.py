@@ -196,7 +196,7 @@ class SpectralSpatialEncoder(nn.Module):
 
         # Output shape for spectral mean is (1, ld // 2)
         # Output shape for spectral variance is (1, ld)
-        mv, vv = self.split_mean_variance(self.spec_encoder(spectral_encoding_data))
+        mv, vv = split_mean_variance(self.spec_encoder(spectral_encoding_data))
 
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv

@@ -198,8 +198,8 @@ class SpectralSpatialEncoder(nn.Module):
         mv, vv = self.split_mean_variance(self.spec_encoder(spectral_encoding_data))
 
         # Revise the mean by concatenating the vectors.
-        # Concatenation order is xls + mv + xss
-        mv = torch.concat((xls, mv, xss), 1)
+        # Concatenation order is xls + xss + mv
+        mv = torch.concat((xls, xss, mv), 1)
 
         # TODO: Verify that this is acceptable output format. May have to turn into a tensor.
         return (mv, vv)

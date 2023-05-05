@@ -55,7 +55,7 @@ class SpectralVAEDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.spectral_im.get_window(idx, self.window_size)
-        return torch.from_numpy(sample)
+        return torch.Tensor(sample)
 
 
 if __name__ == '__main__':

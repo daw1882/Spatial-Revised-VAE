@@ -48,7 +48,7 @@ if __name__ == '__main__':
     dataloader = DataLoader(dataset, batch_size=1024, shuffle=True, num_workers=0)
     print("Dataloader created!")
 
-    model = SpatialRevisedVAE(11, 16, 10)
+    model = SpatialRevisedVAE(11, 16, 10, ss_layers=1)
 
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 

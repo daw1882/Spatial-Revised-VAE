@@ -9,6 +9,7 @@ import torch.nn as nn
 import numpy as np
 from sequential_sensing import SequentialSensingNet
 from local_sensing import LocalSensingNet
+import utils
 
 
 class SpectralEncoder(nn.Module):
@@ -138,37 +139,6 @@ class SpectralSpatialEncoder(nn.Module):
         self.latent_dimensions = ld
         self.spectral_bands = spectral_bands
 
-    def extract_sequential_data(self, x):
-        """
-        Extract the sequential sensing data.
-
-        Parameters
-        ----------
-        x : The input tensor.
-        """
-        return torch.flatten(x, start_dim=1, end_dim=2)
-
-    # def extract_local_data(self, x):
-    #     """
-    #     Extract the local sensing data.
-    #
-    #     Parameters
-    #     ----------
-    #     x : The input tensor.
-    #     """
-    #
-    #     pass
-
-    def extract_spectral_data(self, x):
-        """
-        Extract the spectral sensing data.
-
-        Parameters
-        ----------
-        x : The input tensor.
-        """
-        return x[:, self.spectral_bands//2, self.spectral_bands//2, :]
-
     # Data Tensor: (#pixel vectors, SxS, N) (all at once)
     # Data Tensor: (SxS, N) one at a time.
     def forward(self, x):
@@ -184,11 +154,11 @@ class SpectralSpatialEncoder(nn.Module):
         # Dimension of input x: (batch, s, s, N)
 
         # Dimension of output: (batch, s^2, N)
-        seq_sensing_data = self.extract_sequential_data(x)
+        seq_sensing_data = utils.extract_sequential_data(x)
         # Dimension of input: (batch, s, s, N)
         loc_sensing_data = x
         # Dimension of input: (batch, 1, N), the center pixel vector
-        spectral_encoding_data = self.extract_spectral_data(x)
+        spectral_encoding_data = utils.extract_spectral_data(x, self.spectral_bands)
 
         # Pass data to each encoder
         
@@ -260,13 +230,16 @@ class SpectralSpatialDecoder(nn.Module):
 class SpatialRevisedVAE(nn.Module):
     def __init__(self, s, ld, spectral_bands, layers=3, ss_layers=3, ls_layers=3):
         super(SpatialRevisedVAE, self).__init__()
+        self.spectral_bands = spectral_bands
         self.encoder = SpectralSpatialEncoder(s, ld, spectral_bands, layers, ss_layers, ls_layers)
         self.decoder = SpectralSpatialDecoder(ld, spectral_bands, layers)
+        self.mu = None
+        self.var = None
 
     def forward(self, x):
-        mu, var = self.encoder(x)
-        std = torch.sqrt(var)
-        q = torch.distributions.Normal(mu, std)
+        self.mu, self.var = self.encoder(x)
+        std = torch.sqrt(self.var)
+        q = torch.distributions.Normal(self.mu, std)
         z = q.rsample()
         return self.decoder(x)
 

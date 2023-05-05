@@ -68,7 +68,7 @@ def homology_loss(xls, xss):
     sum_result = torch.sum(sum_term)
     return sum_result / 2
 
-def loss(input_vector, predicted_vector, mean_vector, variance_vector, xls, xss):
+def VAE_loss(input_vector, predicted_vector, mean_vector, variance_vector, xls, xss):
     """
     Compute the loss for a given sample run through the network.
 

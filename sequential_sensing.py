@@ -71,21 +71,21 @@ class SequentialSensingNet(nn.Module):
         """
 
         # Run forward pass through LSTM, outputs a tensor (s^2, ld)
-        print("Before lstm:", x.size())
+        # print("Before lstm:", x.size())
         lstm_output = self.lstm_stack(x)
-        print("After lstm:", lstm_output.size())
+        # print("After lstm:", lstm_output.size())
 
         # Transpose output so that we can do average pooling
         lstm_output_t = torch.transpose(lstm_output, 1, 2)
-        print("After transpose:", lstm_output_t.size())
+        # print("After transpose:", lstm_output_t.size())
 
         # Perform average pooling
         pooled = self.average_pooling(lstm_output_t)
-        print("After pooling:", pooled.size())
+        # print("After pooling:", pooled.size())
 
         # Transpose back to (1, ld // 4)
         result = torch.transpose(pooled, 1, 2)
-        print("After transpose:", result.size())
+        # print("After transpose:", result.size())
 
         return result
 

@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     print("---------------------")
     print("DATALOADER TEST")
-    dataloader = DataLoader(dataset, batch_size=512, shuffle=True, num_workers=0)
+    dataloader = DataLoader(dataset, batch_size=1024, shuffle=True, num_workers=0)
 
     for i_batch, sample_batched in enumerate(dataloader):
         print(i_batch, sample_batched.size())

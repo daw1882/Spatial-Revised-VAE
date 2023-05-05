@@ -10,6 +10,7 @@ import numpy as np
 from sequential_sensing import SequentialSensingNet
 from local_sensing import LocalSensingNet
 
+
 class SpectralEncoder(nn.Module):
     """
     The spectral variational encoder. Takes a pixel vector as input, and outputs
@@ -88,6 +89,7 @@ class SpectralEncoder(nn.Module):
         # TODO: Check if this is allowed, may need to convert this into a tensor.
         return (mean_vector, variance_vector)
 
+
 def split_mean_variance(spec_encoder_result) -> tuple:
     """
     Return the mean vector and variance vector from the spectral encoding
@@ -105,6 +107,7 @@ def split_mean_variance(spec_encoder_result) -> tuple:
 
     # For now this is a tuple, so just return it.
     return spec_encoder_result
+
 
 class SpectralSpatialEncoder(nn.Module):
     """
@@ -135,7 +138,6 @@ class SpectralSpatialEncoder(nn.Module):
         self.latent_dimensions = ld
         self.spectral_bands = spectral_bands
 
-
     def extract_sequential_data(self, x):
         """
         Extract the sequential sensing data.
@@ -144,19 +146,18 @@ class SpectralSpatialEncoder(nn.Module):
         ----------
         x : The input tensor.
         """
-        # TODO: Implement
-        pass
+        return torch.flatten(x, start_dim=1, end_dim=2)
 
-    def extract_local_data(self, x):
-        """
-        Extract the local sensing data.
-
-        Parameters
-        ----------
-        x : The input tensor.
-        """
-        # TODO: Implement
-        pass
+    # def extract_local_data(self, x):
+    #     """
+    #     Extract the local sensing data.
+    #
+    #     Parameters
+    #     ----------
+    #     x : The input tensor.
+    #     """
+    #
+    #     pass
 
     def extract_spectral_data(self, x):
         """
@@ -166,7 +167,7 @@ class SpectralSpatialEncoder(nn.Module):
         ----------
         x : The input tensor.
         """
-        pass
+        return x[:, self.spectral_bands//2, self.spectral_bands//2, :]
 
     # Data Tensor: (#pixel vectors, SxS, N) (all at once)
     # Data Tensor: (SxS, N) one at a time.
@@ -180,12 +181,13 @@ class SpectralSpatialEncoder(nn.Module):
         """
 
         # Split the data for each of the encoder stacks.
-        
-        # Dimension of input: (s^2, N, <b>)
+        # Dimension of input x: (batch, s, s, N)
+
+        # Dimension of output: (batch, s^2, N)
         seq_sensing_data = self.extract_sequential_data(x)
-        # Dimension of input: (s, s, N, <b>)
-        loc_sensing_data = self.extract_local_data(x)
-        # Dimension of input: (1, N, <b>), the center pixel vector
+        # Dimension of input: (batch, s, s, N)
+        loc_sensing_data = x
+        # Dimension of input: (batch, 1, N), the center pixel vector
         spectral_encoding_data = self.extract_spectral_data(x)
 
         # Pass data to each encoder
@@ -203,10 +205,10 @@ class SpectralSpatialEncoder(nn.Module):
         mv = torch.concat((xls, xss, mv), 1)
 
         # TODO: Verify that this is acceptable output format. May have to turn into a tensor.
-        return (mv, vv)
+        return mv, vv
 
 
-class Decoder(nn.Module):
+class SpectralSpatialDecoder(nn.Module):
 
     def __init__(self, ld, spectral_bands, layers) -> None:
         """
@@ -218,7 +220,7 @@ class Decoder(nn.Module):
         spectral_bands : The number of spectral bands.
         layers : The number of layers in the spatial encoder.
         """
-        super(Decoder, self).__init__()
+        super(SpectralSpatialDecoder, self).__init__()
 
         hidden_size = ld
         output_size = spectral_bands
@@ -254,4 +256,17 @@ class Decoder(nn.Module):
 
         return xhat
 
+
+class SpatialRevisedVAE(nn.Module):
+    def __init__(self, s, ld, spectral_bands, layers=3, ss_layers=3, ls_layers=3):
+        super(SpatialRevisedVAE, self).__init__()
+        self.encoder = SpectralSpatialEncoder(s, ld, spectral_bands, layers, ss_layers, ls_layers)
+        self.decoder = SpectralSpatialDecoder(ld, spectral_bands, layers)
+
+    def forward(self, x):
+        mu, var = self.encoder(x)
+        std = torch.sqrt(var)
+        q = torch.distributions.Normal(mu, std)
+        z = q.rsample()
+        return self.decoder(x)
 

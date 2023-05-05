@@ -38,9 +38,3 @@ class SpectralImage:
         row = (idx // (self.width - s))
         col = (idx % (self.width - s))
         return self.image[row: row+s, col: col+s, :]
-
-
-if __name__ == "__main__":
-    im = SpectralImage("C:\\Users\\dade_\\NN_DATA\\testing")
-    # im = SpectralImage("C:\\Users\\dade_\\NN_DATA\\318r\\TIFFs")
-    print(im.get_length(11))

@@ -84,8 +84,8 @@ class SequentialSensingNet(nn.Module):
         # print("After pooling:", pooled.size())
 
         # Transpose back to (1, ld // 4)
-        result = torch.transpose(pooled, 1, 2)
+        # result = torch.transpose(pooled, 1, 2)
         # print("After transpose:", result.size())
 
-        return result
+        return pooled
 

@@ -22,9 +22,10 @@ def train_one_epoch():
 
         # Make predictions for this batch
         outputs = model(inputs)
+        print("Outputs:", outputs.size())
 
         input_vector = utils.extract_spectral_data(inputs, model.spectral_bands)
-        output_vector = utils.extract_spectral_data(outputs, model.spectral_bands)
+        # output_vector = utils.extract_spectral_data(outputs, model.spectral_bands)
         # Compute the loss and its gradients
         loss = VAE_loss(input_vector, outputs, model.mu, model.var)
         loss.backward()

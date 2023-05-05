@@ -162,18 +162,19 @@ class SpectralSpatialEncoder(nn.Module):
 
         # Pass data to each encoder
         
-        # Output shape for spatial encodings is (1, ld // 4)
-        xss = self.spat_encoder_ss(seq_sensing_data)
-        xls = self.spat_encoder_ls(loc_sensing_data)
+        # Output shape for spatial encodings is (batch, ld // 4)
+        xss = torch.squeeze(self.spat_encoder_ss(seq_sensing_data))
+        xls = torch.squeeze(self.spat_encoder_ls(loc_sensing_data))
 
-        # Output shape for spectral mean is (1, ld // 2)
-        # Output shape for spectral variance is (1, ld)
+        # Output shape for spectral mean is (batch, ld // 2)
+        # Output shape for spectral variance is (batch, ld)
         mv, vv = split_mean_variance(self.spec_encoder(spectral_encoding_data))
 
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
-        print(xls.size(), xss.size(), mv.size())
+        # print(xls.size(), xss.size(), mv.size(), vv.size())
         mv = torch.concat((xls, xss, mv), 1)
+        # print("after concat:", mv.size())
 
         # TODO: Verify that this is acceptable output format. May have to turn into a tensor.
         return mv, vv
@@ -217,7 +218,8 @@ class SpectralSpatialDecoder(nn.Module):
         """
 
         mean, variance = split_mean_variance(x)
-        gaussian_noise = np.random.normal(0, 1, size=(1, self.ld))
+        # gaussian_noise = np.random.normal(0, 1, size=(1, self.ld))
+        gaussian_noise = torch.normal(0, 1, size=(1, self.ld))
         
         sample = mean + (gaussian_noise * variance)
         xhat = sample
@@ -238,9 +240,10 @@ class SpatialRevisedVAE(nn.Module):
         self.var = None
 
     def forward(self, x):
-        self.mu, self.var = self.encoder(x)
-        std = torch.sqrt(self.var)
-        q = torch.distributions.Normal(self.mu, std)
-        z = q.rsample()
-        return self.decoder(x)
+        # self.mu, self.var = self.encoder(x)
+        # std = torch.sqrt(self.var)
+        # q = torch.distributions.Normal(self.mu, std)
+        # z = q.rsample()
+        z = self.encoder(x)
+        return self.decoder(z)
 

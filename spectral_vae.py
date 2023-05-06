@@ -247,6 +247,7 @@ class SpatialRevisedVAE(nn.Module):
         # std = torch.sqrt(self.var)
         # q = torch.distributions.Normal(self.mu, std)
         # z = q.rsample()
+        print(f"Forward SVAE X Shape: {x.shape}")
         z = self.encoder(x)
         self.mu = z[0]
         self.var = z[1]

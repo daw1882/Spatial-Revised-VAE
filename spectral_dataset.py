@@ -23,7 +23,7 @@ class SpectralImage:
 
     def load_spectral_image(self):
         print("Loading in spectral image...")
-        for path in self.image_paths:
+        for i, path in enumerate(self.image_paths):
             # Read in image in greyscale mode
             channel = cv2.imread(path, 0)
             channel = np.transpose(channel)
@@ -35,6 +35,7 @@ class SpectralImage:
                 self.image = channel
             else:
                 self.image = np.append(self.image, channel, axis=2)
+            print(f"\tBand {i+1} loaded.")
         print("Spectral image loaded!")
 
     def get_length(self, s):

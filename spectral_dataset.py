@@ -17,7 +17,7 @@ class SpectralImage:
         self.image_dir = image_dir
         image_names = os.listdir(image_dir)
         for image in image_names:
-            self.image_paths.append(image_dir + "\\" + image)
+            self.image_paths.append(image_dir + "/" + image)
         self.spectral_bands = len(self.image_paths)
         self.load_spectral_image()
 
@@ -49,23 +49,24 @@ class SpectralImage:
 
 class SpectralVAEDataset(Dataset):
 
-    def __init__(self, spectral_im: SpectralImage, window_size):
+    def __init__(self, spectral_im: SpectralImage, window_size, device):
         self.spectral_im = spectral_im
         self.window_size = window_size
+        self.device = device
 
     def __len__(self):
         return self.spectral_im.get_length(self.window_size)
 
     def __getitem__(self, idx):
         sample = self.spectral_im.get_window(idx, self.window_size)
-        return torch.Tensor(sample)
+        return torch.Tensor(sample).to(self.device)
 
 
 if __name__ == '__main__':
     print("---------------------")
     print("DATASET TEST")
     im = SpectralImage("C:\\Users\\dade_\\NN_DATA\\testing")
-    dataset = SpectralVAEDataset(im, 11)
+    dataset = SpectralVAEDataset(im, 11, "cpu")
 
     print(len(dataset))
     for i in range(len(dataset)):

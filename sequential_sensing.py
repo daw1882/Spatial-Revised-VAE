@@ -11,6 +11,7 @@ import torch.nn as nn
 class ExtractLSTMOutput(nn.Module):
     def forward(self, x):
         output, _ = x
+        # print("Extractor", output.get_device())
         return output
 
 
@@ -72,6 +73,7 @@ class SequentialSensingNet(nn.Module):
         """
 
         # Run forward pass through LSTM, outputs a tensor (s^2, ld)
+        # print("LSTM", x.dtype, x.get_device())
         lstm_output = self.lstm_stack(x)
 
         # Transpose output so that we can do average pooling

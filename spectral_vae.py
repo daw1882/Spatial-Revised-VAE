@@ -27,7 +27,7 @@ class SpectralEncoder(nn.Module):
         The last layer splits into the mean and std layers.
     """
 
-    def __init__(self, spectral_bands, ld, layers=3) -> None:
+    def __init__(self, spectral_bands, ld, device, layers=3) -> None:
         """
         Initialize the network. 
 
@@ -49,15 +49,18 @@ class SpectralEncoder(nn.Module):
 
         if layers >= 2:
             # First layer is 
-            self.layers.append(nn.Linear(spectral_bands, hidden_size))
+            self.layers.append(nn.Linear(spectral_bands, hidden_size,
+                                         device=device))
             for _ in range(1, layers - 1):
-                self.layers.append(nn.Linear(hidden_size, hidden_size))
+                self.layers.append(nn.Linear(hidden_size, hidden_size,
+                                             device=device))
         else:
             mean_layer_input_size = spectral_bands
             std_layer_input_size = spectral_bands
 
-        self.mean_layer = nn.Linear(mean_layer_input_size, mean_layer_output_size)
-        self.std_layer = nn.Linear(std_layer_input_size, ld)
+        self.mean_layer = nn.Linear(mean_layer_input_size,
+                                    mean_layer_output_size, device=device)
+        self.std_layer = nn.Linear(std_layer_input_size, ld, device=device)
 
         self.activation = nn.Sigmoid()
 
@@ -85,9 +88,8 @@ class SpectralEncoder(nn.Module):
 
         # Compute std vector
         std_vector = self.activation(self.std_layer(x))
-        
-        # TODO: Check if this is allowed, may need to convert this into a tensor.
-        return (mean_vector, std_vector)
+
+        return mean_vector, std_vector
 
 
 def split_mean_std(spec_encoder_result) -> tuple:
@@ -115,7 +117,8 @@ class SpectralSpatialEncoder(nn.Module):
     of the variational auto encoder.
     """
 
-    def __init__(self, s, ld, spectral_bands, layers, ss_layers, ls_layers) -> None:
+    def __init__(self, s, ld, spectral_bands, layers, ss_layers, ls_layers,
+                 device) -> None:
         """
         Initialize the module.
 
@@ -132,7 +135,7 @@ class SpectralSpatialEncoder(nn.Module):
 
         self.spat_encoder_ss = SequentialSensingNet(s, ld, spectral_bands, ss_layers)
         self.spat_encoder_ls = LocalSensingNet(s, ld, spectral_bands, ls_layers)
-        self.spec_encoder = SpectralEncoder(spectral_bands, ld, layers)
+        self.spec_encoder = SpectralEncoder(spectral_bands, ld, device, layers)
 
         self.neighbor_window_size = s
         self.latent_dimensions = ld
@@ -178,7 +181,7 @@ class SpectralSpatialEncoder(nn.Module):
 
 class SpectralSpatialDecoder(nn.Module):
 
-    def __init__(self, ld, spectral_bands, layers) -> None:
+    def __init__(self, ld, spectral_bands, layers, device) -> None:
         """
         Initialize the module.
 
@@ -189,6 +192,7 @@ class SpectralSpatialDecoder(nn.Module):
         layers : The number of layers in the spatial encoder.
         """
         super(SpectralSpatialDecoder, self).__init__()
+        self.device = device
 
         hidden_size = ld
         output_size = spectral_bands
@@ -198,15 +202,15 @@ class SpectralSpatialDecoder(nn.Module):
         self.layers = []
 
         if layers <= 1:
-            self.layers.append(nn.Linear(ld, output_size))
+            self.layers.append(nn.Linear(ld, output_size, device=device))
             return
 
-        self.layers.append(nn.Linear(ld, hidden_size))
+        self.layers.append(nn.Linear(ld, hidden_size, device=device))
         # Middle layers
         for _ in range(1, layers - 1):
-            self.layers.append(nn.Linear(hidden_size, hidden_size))
+            self.layers.append(nn.Linear(hidden_size, hidden_size, device=device))
 
-        self.layers.append(nn.Linear(hidden_size, output_size))
+        self.layers.append(nn.Linear(hidden_size, output_size, device=device))
 
     def forward(self, x):
         """
@@ -215,9 +219,10 @@ class SpectralSpatialDecoder(nn.Module):
 
         mean, std, xss, xls = split_mean_std(x)
         gaussian_noise = torch.distributions.Normal(0, 1)
+        noise = gaussian_noise.sample(mean.shape).to(self.device)
 
         # Re-parameterization trick
-        sample = mean + (std * gaussian_noise.sample(mean.shape))
+        sample = mean + (std * noise)
         x_hat = sample
 
         for layer in self.layers:
@@ -227,17 +232,20 @@ class SpectralSpatialDecoder(nn.Module):
 
 
 class SpatialRevisedVAE(nn.Module):
-    def __init__(self, s, ld, spectral_bands, layers=3, ss_layers=3, ls_layers=3):
+    def __init__(self, s, ld, spectral_bands, device, layers=3, ss_layers=3,
+                 ls_layers=3):
         super(SpatialRevisedVAE, self).__init__()
         self.spectral_bands = spectral_bands
-        self.encoder = SpectralSpatialEncoder(s, ld, spectral_bands, layers, ss_layers, ls_layers)
-        self.decoder = SpectralSpatialDecoder(ld, spectral_bands, layers)
+        self.encoder = SpectralSpatialEncoder(s, ld, spectral_bands, layers,
+                                              ss_layers, ls_layers, device)
+        self.decoder = SpectralSpatialDecoder(ld, spectral_bands, layers,
+                                              device)
         self.mu = None
-        self.var = None
+        self.std = None
 
     def forward(self, x):
         z = self.encoder(x)
         self.mu = z[0]
-        self.var = z[1]
+        self.std = z[1]
         return self.decoder(z)
 

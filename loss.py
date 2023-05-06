@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch
 
 MSE = nn.MSELoss()
-KL_loss = nn.KLDivLoss(reduction="batchmean")
+
 
 def reconstruction_loss(input_vector, predicted_vector):
     """

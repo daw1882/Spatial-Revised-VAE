@@ -17,7 +17,7 @@ if __name__ == '__main__':
     # Training Parameters
     model_dir = "./models"
     # image_dir = "/mnt/d/PycharmProjects/nn_data/test"
-    image_dir = "D:/PycharmProjects/nn_data/318r/TIFFs"
+    image_dir = "D:/PycharmProjects/nn_data/training"
     epochs = 5
     update_iters = 10
     batch_size = 1024
@@ -38,7 +38,6 @@ if __name__ == '__main__':
     dataset = SpectralVAEDataset(spec_img, window_size, device)
     dataloader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True, num_workers=0,
-        pin_memory=True
     )
     print("Dataloader created!")
 

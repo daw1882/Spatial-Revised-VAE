@@ -219,9 +219,12 @@ class SpectralSpatialDecoder(nn.Module):
 
         mean, std, xss, xls = split_mean_std(x)
         # gaussian_noise = np.random.normal(0, 1, size=(1, self.ld))
-        gaussian_noise = torch.normal(0, 1, size=(1, self.ld))
+        # gaussian_noise = torch.normal(0, 1, size=(1, self.ld))
+        guassian_noise = torch.distributions.Normal(0, 1)
         
-        sample = mean + (gaussian_noise * std)
+        # sample = mean + (gaussian_noise * std)
+        # Reparameterization trick
+        sample = mean + (std * guassian_noise.sample(mean.shape))
         xhat = sample
 
         for layer in self.layers:

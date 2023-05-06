@@ -43,12 +43,12 @@ def kl_loss(mean_vector, std_vector):
     The kl-divergence between the latent distribution and the normal
     distribution.
     """
-    term1 = -torch.log(torch.square(std_vector))
-    term2 = torch.square(mean_vector)
-    term3 = torch.square(std_vector)
+    # term1 = -torch.log(torch.square(std_vector))
+    # term2 = torch.square(mean_vector)
+    # term3 = torch.square(std_vector)
 
-    numerator = term1 + term2 + term3 - 1
-    return numerator / 2
+    # numerator = term1 + term2 + term3 - 1
+    # return numerator / 2
 
     # func = nn.Sigmoid()
     # input_vector = func(input_vector)
@@ -58,6 +58,10 @@ def kl_loss(mean_vector, std_vector):
     # print("HOW IS THIS HAPPENING", torch.any(input_vector < 0))
     # print("TESTING", torch.log(input_vector), predicted_vector)
     # return KL_loss(predicted_vector, input_vector)
+
+    kl = (std_vector ** 2 + mean_vector ** 2 
+                    - torch.log(std_vector) - 0.5).sum()
+    return kl
 
 
 def homology_loss(xls, xss):

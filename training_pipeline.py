@@ -24,7 +24,7 @@ def train_one_epoch():
         outputs, xss, xls = model(inputs)
 
         input_vector = utils.extract_spectral_data(inputs, model.spectral_bands)
-        print("training input tensor", torch.any(input_vector < 0))
+        # print("training input tensor", torch.any(input_vector < 0))
         # output_vector = utils.extract_spectral_data(outputs, model.spectral_bands)
         # Compute the loss and its gradients
         loss = VAE_loss(input_vector, outputs, model.mu, model.var, xls, xss)
@@ -33,27 +33,27 @@ def train_one_epoch():
         # Adjust learning weights
         optimizer.step()
 
-        exit(0)
+        # exit(0)
 
         # Gather data and report
         running_loss += loss.item()
         if i % 10 == 9:
             last_loss = running_loss / 1000  # loss per batch
-            print('\tbatch {} loss: {}'.format(i + 1, last_loss))
+            # print('\tbatch {} loss: {}'.format(i + 1, last_loss))
             running_loss = 0.
 
     return last_loss
 
 
 if __name__ == '__main__':
-    im = SpectralImage("C:\\Users\\dade_\\NN_DATA\\testing")
+    im = SpectralImage("../test") # Change to be specific file path.
     dataset = SpectralVAEDataset(im, 11)
     dataloader = DataLoader(dataset, batch_size=1024, shuffle=True, num_workers=0)
     print("Dataloader created!")
 
-    model = SpatialRevisedVAE(11, 16, 10)
+    model = SpatialRevisedVAE(11, 16, 3)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     EPOCHS = 1
 

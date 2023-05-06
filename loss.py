@@ -82,8 +82,8 @@ def homology_loss(xls, xss):
     sum_term1 = xls * torch.log(xls / xss)
     sum_term2 = xss * torch.log(xss / xls)
 
-    print("SUM TERM1", sum_term1)
-    print("SUM TERM2", sum_term2)
+    # print("SUM TERM1", sum_term1)
+    # print("SUM TERM2", sum_term2)
     sum_term = sum_term1 + sum_term2
     sum_result = torch.sum(sum_term)
     return sum_result / 2
@@ -106,13 +106,13 @@ def VAE_loss(input_vector, predicted_vector, mean_vector, std_vector, xls, xss):
     -------
     The loss value for the sample.
     """
-    print("LOSS VALUES:")
-    print("Input Vector:", input_vector, input_vector.size(), torch.count_nonzero(input_vector), torch.any(input_vector < 0))
-    print("Predicted Vector:", predicted_vector, predicted_vector.size(), torch.count_nonzero(predicted_vector), torch.any(predicted_vector < 0))
-    print("Mean Vector:", mean_vector.size())
-    print("Standard Dev Vector:", std_vector.size())
-    print("xls Vector:", xls, xls.size())
-    print("xss Vector:", xss, xss.size())
+    # print("LOSS VALUES:")
+    # print("Input Vector:", input_vector, input_vector.size(), torch.count_nonzero(input_vector), torch.any(input_vector < 0))
+    # print("Predicted Vector:", predicted_vector, predicted_vector.size(), torch.count_nonzero(predicted_vector), torch.any(predicted_vector < 0))
+    # print("Mean Vector:", mean_vector.size())
+    # print("Standard Dev Vector:", std_vector.size())
+    # print("xls Vector:", xls, xls.size())
+    # print("xss Vector:", xss, xss.size())
 
     # inputs = torch.clone(input_vector)
     # targets = torch.clone(predicted_vector)
@@ -120,10 +120,10 @@ def VAE_loss(input_vector, predicted_vector, mean_vector, std_vector, xls, xss):
     reconstruction_term = reconstruction_loss(input_vector, predicted_vector)
     kl_term = kl_loss(mean_vector, std_vector)
     homology_term = homology_loss(xls, xss)
-    print("reconstruction loss:", reconstruction_term, reconstruction_term.size())
-    print("kl loss:", kl_term, kl_term.size())
-    print("homology loss:", homology_term)
+    # print("reconstruction loss:", reconstruction_term, reconstruction_term.size())
+    # print("kl loss:", kl_term, kl_term.size())
+    # print("homology loss:", homology_term)
 
     result = reconstruction_term + kl_term + homology_term
-    # print("Result:", result, result.size())
+    print("Result:", result, result.size())
     return result

@@ -40,7 +40,7 @@ class SequentialSensingNet(nn.Module):
         super(SequentialSensingNet, self).__init__()
         self.window_size = s
 
-        print(f"Init SequentialNet with s={s}, ld={ld}, s_bands={spectral_bands}")
+        # print(f"Init SequentialNet with s={s}, ld={ld}, s_bands={spectral_bands}")
 
         # Setup stacked LSTM
         extractor = ExtractLSTMOutput()
@@ -75,7 +75,7 @@ class SequentialSensingNet(nn.Module):
 
         # Run forward pass through LSTM, outputs a tensor (s^2, ld)
         # print("Before lstm:", x.size())
-        print(f"LSTM input shape: {x.shape}")
+        # print(f"LSTM input shape: {x.shape}")
         lstm_output = self.lstm_stack(x)
         # print("After lstm:", lstm_output.size())
 

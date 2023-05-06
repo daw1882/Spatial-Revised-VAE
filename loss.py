@@ -28,7 +28,6 @@ def reconstruction_loss(input_vector, predicted_vector):
 
 
 def kl_loss(mean_vector, std_vector):
-# def kl_loss(input_vector, predicted_vector):
     """
     Compute the kl-divergence loss term between the latent distribution and 
     the normal distribution.
@@ -59,7 +58,8 @@ def kl_loss(mean_vector, std_vector):
     # print("TESTING", torch.log(input_vector), predicted_vector)
     # return KL_loss(predicted_vector, input_vector)
 
-    kl = (std_vector ** 2 + mean_vector ** 2 - torch.log(std_vector) - 0.5).sum()
+    kl = ((torch.square(std_vector) + torch.square(mean_vector) -
+           torch.log(torch.square(std_vector)) - 1) / 2).sum()
     return kl
 
 

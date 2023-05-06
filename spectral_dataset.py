@@ -18,6 +18,7 @@ class SpectralImage:
         image_names = os.listdir(image_dir)
         for image in image_names:
             self.image_paths.append(image_dir + "\\" + image)
+        self.spectral_bands = len(self.image_paths)
         self.load_spectral_image()
 
     def load_spectral_image(self):

@@ -59,8 +59,7 @@ def kl_loss(mean_vector, std_vector):
     # print("TESTING", torch.log(input_vector), predicted_vector)
     # return KL_loss(predicted_vector, input_vector)
 
-    kl = (std_vector ** 2 + mean_vector ** 2 
-                    - torch.log(std_vector) - 0.5).sum()
+    kl = (std_vector ** 2 + mean_vector ** 2 - torch.log(std_vector) - 0.5).sum()
     return kl
 
 
@@ -124,6 +123,6 @@ def VAE_loss(input_vector, predicted_vector, mean_vector, std_vector, xls, xss):
     # print("kl loss:", kl_term, kl_term.size())
     # print("homology loss:", homology_term)
 
-    result = reconstruction_term + kl_term + homology_term
-    print("Result:", result, result.size())
-    return result
+    # result = reconstruction_term + kl_term + homology_term
+    # print("Result:", result, result.size())
+    return reconstruction_term, kl_term, homology_term

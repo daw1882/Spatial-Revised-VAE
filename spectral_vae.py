@@ -6,7 +6,6 @@
 
 import torch
 import torch.nn as nn
-import numpy as np
 from sequential_sensing import SequentialSensingNet
 from local_sensing import LocalSensingNet
 import utils
@@ -172,11 +171,8 @@ class SpectralSpatialEncoder(nn.Module):
 
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
-        # print(xls.size(), xss.size(), mv.size(), sv.size())
         mv = torch.concat((xls, xss, mv), 1)
-        # print("after concat:", mv.size())
 
-        # TODO: Verify that this is acceptable output format. May have to turn into a tensor.
         return mv, sv, xss, xls
 
 
@@ -243,11 +239,6 @@ class SpatialRevisedVAE(nn.Module):
         self.var = None
 
     def forward(self, x):
-        # self.mu, self.var = self.encoder(x)
-        # std = torch.sqrt(self.var)
-        # q = torch.distributions.Normal(self.mu, std)
-        # z = q.rsample()
-        # print(f"Forward SVAE X Shape: {x.shape}")
         z = self.encoder(x)
         self.mu = z[0]
         self.var = z[1]

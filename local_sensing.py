@@ -4,7 +4,6 @@ author: Dade Wood
 CSCI 736
 """
 
-import torch
 import torch.nn as nn
 
 from collections import OrderedDict

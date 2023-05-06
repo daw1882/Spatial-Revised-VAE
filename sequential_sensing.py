@@ -40,8 +40,6 @@ class SequentialSensingNet(nn.Module):
         super(SequentialSensingNet, self).__init__()
         self.window_size = s
 
-        # print(f"Init SequentialNet with s={s}, ld={ld}, s_bands={spectral_bands}")
-
         # Setup stacked LSTM
         extractor = ExtractLSTMOutput()
         if lstm_layers == 1:
@@ -74,22 +72,15 @@ class SequentialSensingNet(nn.Module):
         """
 
         # Run forward pass through LSTM, outputs a tensor (s^2, ld)
-        # print("Before lstm:", x.size())
-        # print(f"LSTM input shape: {x.shape}")
         lstm_output = self.lstm_stack(x)
-        # print("After lstm:", lstm_output.size())
 
         # Transpose output so that we can do average pooling
         lstm_output_t = torch.transpose(lstm_output, 1, 2)
-        # print("After transpose:", lstm_output_t.size())
 
         # Perform average pooling
         pooled = self.average_pooling(lstm_output_t)
-        # print("After pooling:", pooled.size())
 
-        # Transpose back to (1, ld // 4)
-        # result = torch.transpose(pooled, 1, 2)
-        # print("After transpose:", result.size())
+        # Activation layer
         result = self.activation(pooled)
 
         return result

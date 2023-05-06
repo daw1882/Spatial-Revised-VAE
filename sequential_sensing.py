@@ -7,6 +7,14 @@
 import torch
 import torch.nn as nn
 
+
+class ExtractLSTMOutput(nn.Module):
+    def forward(self, x):
+        output, _ = x
+        # print("Extractor", output.get_device())
+        return output
+
+
 class SequentialSensingNet(nn.Module):
     """
     The LSTM network for sequential sensing.
@@ -34,21 +42,24 @@ class SequentialSensingNet(nn.Module):
         self.window_size = s
 
         # Setup stacked LSTM
+        extractor = ExtractLSTMOutput()
         if lstm_layers == 1:
-            self.lstm_stack = nn.LSTM(input_size=spectral_bands, hidden_size=ld // 4,
+            stack = nn.LSTM(input_size=spectral_bands, hidden_size=ld // 4,
                                   num_layers=lstm_layers)
+            self.lstm_stack = nn.Sequential(stack, extractor)
         else:
             # All hidden sizes are ld except for the final layer, which is output
             # as ld / 4.
             stack = nn.LSTM(input_size=spectral_bands, hidden_size=ld, num_layers=lstm_layers - 1)
             final = nn.LSTM(input_size=ld, hidden_size=ld // 4, num_layers=1)
-            self.lstm_stack = nn.Sequential(stack, final)
+            self.lstm_stack = nn.Sequential(stack, extractor, final, extractor)
 
         # Setup average pooling
         # Output from LSTM is tensor of shape (s x s, ld // 4)
         # Pooling needs to get (1, ld // 4)
         # Need to average along the s x s dimension.
         self.average_pooling = nn.AvgPool1d(s * s)
+        self.activation = nn.Sigmoid()
 
     def forward(self, x):
         """
@@ -62,16 +73,17 @@ class SequentialSensingNet(nn.Module):
         """
 
         # Run forward pass through LSTM, outputs a tensor (s^2, ld)
+        # print("LSTM", x.dtype, x.get_device())
         lstm_output = self.lstm_stack(x)
 
         # Transpose output so that we can do average pooling
-        lstm_output_t = torch.transpose(lstm_output, 0, 1)
+        lstm_output_t = torch.transpose(lstm_output, 1, 2)
 
         # Perform average pooling
         pooled = self.average_pooling(lstm_output_t)
 
-        # Transpose back to (1, ld // 4)
-        result = torch.transpose(pooled, 0, 1)
+        # Activation layer
+        result = self.activation(pooled)
 
         return result
 

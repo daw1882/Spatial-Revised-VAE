@@ -5,6 +5,7 @@ CSCI 736
 """
 
 from math import floor
+import torch
 
 
 def compute_kernel_sizes(s, num_layers):
@@ -30,3 +31,36 @@ def compute_kernel_sizes(s, num_layers):
     # output size
     kernels.append(size)
     return kernels
+
+
+def extract_sequential_data(x):
+    """
+    Extract the sequential sensing data.
+
+    Parameters
+    ----------
+    x : The input tensor.
+    """
+    return torch.flatten(x, start_dim=1, end_dim=2)
+
+
+def extract_local_data(x):
+    """
+    Extract the local sensing data.
+
+    Parameters
+    ----------
+    x : The input tensor.
+    """
+    return torch.transpose(x, 1, 3)
+
+
+def extract_spectral_data(x, spectral_bands):
+    """
+    Extract the spectral sensing data.
+
+    Parameters
+    ----------
+    x : The input tensor.
+    """
+    return x[:, spectral_bands//2, spectral_bands//2, :]

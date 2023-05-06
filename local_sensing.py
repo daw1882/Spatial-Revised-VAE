@@ -4,7 +4,6 @@ author: Dade Wood
 CSCI 736
 """
 
-import torch
 import torch.nn as nn
 
 from collections import OrderedDict
@@ -62,6 +61,7 @@ class LocalSensingNet(nn.Module):
             )
 
         self.cnn_layers = nn.Sequential(OrderedDict(cnn_layer_list))
+        self.activation = nn.Sigmoid()
 
     def forward(self, x):
-        return self.cnn_layers(x)
+        return self.activation(self.cnn_layers(x))

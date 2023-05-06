@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 
-from spectral_vae import SpatialRevisedVAE
+from spectral_vae import SpatialRevisedVAE, SpectralSpatialEncoder, SpectralSpatialDecoder
 from spectral_dataset import SpectralVAEDataset, SpectralImage
 from loss import VAE_loss
 import utils
@@ -21,21 +21,23 @@ def train_one_epoch():
         optimizer.zero_grad()
 
         # Make predictions for this batch
-        outputs = model(inputs)
-        print("Outputs:", outputs.size())
+        outputs, xss, xls = model(inputs)
 
         input_vector = utils.extract_spectral_data(inputs, model.spectral_bands)
+        print("training input tensor", torch.any(input_vector < 0))
         # output_vector = utils.extract_spectral_data(outputs, model.spectral_bands)
         # Compute the loss and its gradients
-        loss = VAE_loss(input_vector, outputs, model.mu, model.var)
+        loss = VAE_loss(input_vector, outputs, model.mu, model.var, xls, xss)
         loss.backward()
 
         # Adjust learning weights
         optimizer.step()
 
+        exit(0)
+
         # Gather data and report
         running_loss += loss.item()
-        if i % 1000 == 999:
+        if i % 10 == 9:
             last_loss = running_loss / 1000  # loss per batch
             print('\tbatch {} loss: {}'.format(i + 1, last_loss))
             running_loss = 0.

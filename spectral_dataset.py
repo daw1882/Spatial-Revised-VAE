@@ -26,6 +26,10 @@ class SpectralImage:
             # Read in image in greyscale mode
             channel = cv2.imread(path, 0)
             channel = np.transpose(channel)
+            channel = np.divide(channel, 255)
+            channel = np.add(channel, 1e-9)
+            print(np.any((channel < 0)))
+            print("zero", np.any((channel == 0)))
             channel = np.expand_dims(channel, axis=2)
             if self.image is None:
                 self.width, self.height, _ = channel.shape

@@ -15,7 +15,7 @@ import utils
 class SpectralEncoder(nn.Module):
     """
     The spectral variational encoder. Takes a pixel vector as input, and outputs
-    the mean and variance. The mean is a tensor (1, ld / 2), and the variance
+    the mean and std. The mean is a tensor (1, ld / 2), and the std
     is a tensor (1, ld). The mean is revised by the spatial encodings in a later
     step.
 
@@ -25,7 +25,7 @@ class SpectralEncoder(nn.Module):
     ld : The dimension of the latent vector.
         This should always be a multiple of 4.
     layers : The number of dense stacked layers in the encoder.
-        The last layer splits into the mean and variance layers.
+        The last layer splits into the mean and std layers.
     """
 
     def __init__(self, spectral_bands, ld, layers=3) -> None:
@@ -42,7 +42,7 @@ class SpectralEncoder(nn.Module):
         super(SpectralEncoder, self).__init__()
 
         hidden_size = ld
-        variance_layer_input_size = hidden_size
+        std_layer_input_size = hidden_size
         mean_layer_input_size = hidden_size
         mean_layer_output_size = ld // 2
 
@@ -55,12 +55,12 @@ class SpectralEncoder(nn.Module):
                 self.layers.append(nn.Linear(hidden_size, hidden_size))
         else:
             mean_layer_input_size = spectral_bands
-            variance_layer_input_size = spectral_bands
+            std_layer_input_size = spectral_bands
 
         self.mean_layer = nn.Linear(mean_layer_input_size, mean_layer_output_size)
-        self.variance_layer = nn.Linear(variance_layer_input_size, ld)
+        self.std_layer = nn.Linear(std_layer_input_size, ld)
 
-        self.activation = nn.ReLU()
+        self.activation = nn.Sigmoid()
 
     def forward(self, x):
         """
@@ -72,9 +72,9 @@ class SpectralEncoder(nn.Module):
 
         Returns
         -------
-        A tuple of the form (mean_vector, variance_vector) where the mean vector
-        is the encoding of the mean with adjusted dimensions, and the variance
-        vector is the encoding of the variance.
+        A tuple of the form (mean_vector, std_vector) where the mean vector
+        is the encoding of the mean with adjusted dimensions, and the std
+        vector is the encoding of the std.
         """
 
         # Forward pass of stacked layers (n-1) layers.
@@ -84,16 +84,16 @@ class SpectralEncoder(nn.Module):
         # Compute mean vector
         mean_vector = self.activation(self.mean_layer(x))
 
-        # Compute variance vector
-        variance_vector = self.activation(self.variance_layer(x))
+        # Compute std vector
+        std_vector = self.activation(self.std_layer(x))
         
         # TODO: Check if this is allowed, may need to convert this into a tensor.
-        return (mean_vector, variance_vector)
+        return (mean_vector, std_vector)
 
 
-def split_mean_variance(spec_encoder_result) -> tuple:
+def split_mean_std(spec_encoder_result) -> tuple:
     """
-    Return the mean vector and variance vector from the spectral encoding
+    Return the mean vector and std vector from the spectral encoding
     output.
 
     Parameters
@@ -103,7 +103,7 @@ def split_mean_variance(spec_encoder_result) -> tuple:
     Returns
     -------
     A tuple containing the mean tensor in the first position and the
-    variance tensor in the second.
+    std tensor in the second.
     """
 
     # For now this is a tuple, so just return it.
@@ -167,17 +167,17 @@ class SpectralSpatialEncoder(nn.Module):
         xls = torch.squeeze(self.spat_encoder_ls(loc_sensing_data))
 
         # Output shape for spectral mean is (batch, ld // 2)
-        # Output shape for spectral variance is (batch, ld)
-        mv, vv = split_mean_variance(self.spec_encoder(spectral_encoding_data))
+        # Output shape for spectral std is (batch, ld)
+        mv, sv = split_mean_std(self.spec_encoder(spectral_encoding_data))
 
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
-        # print(xls.size(), xss.size(), mv.size(), vv.size())
+        # print(xls.size(), xss.size(), mv.size(), sv.size())
         mv = torch.concat((xls, xss, mv), 1)
         # print("after concat:", mv.size())
 
         # TODO: Verify that this is acceptable output format. May have to turn into a tensor.
-        return mv, vv
+        return mv, sv, xss, xls
 
 
 class SpectralSpatialDecoder(nn.Module):
@@ -198,7 +198,7 @@ class SpectralSpatialDecoder(nn.Module):
         output_size = spectral_bands
 
         self.ld = ld
-        self.activation = nn.ReLU()
+        self.activation = nn.Sigmoid()
         self.layers = []
 
         if layers <= 1:
@@ -217,17 +217,17 @@ class SpectralSpatialDecoder(nn.Module):
         Perform forward pass.
         """
 
-        mean, variance = split_mean_variance(x)
+        mean, std, xss, xls = split_mean_std(x)
         # gaussian_noise = np.random.normal(0, 1, size=(1, self.ld))
         gaussian_noise = torch.normal(0, 1, size=(1, self.ld))
         
-        sample = mean + (gaussian_noise * variance)
+        sample = mean + (gaussian_noise * std)
         xhat = sample
 
         for layer in self.layers:
             xhat = self.activation(layer(xhat))
 
-        return xhat
+        return xhat, xss, xls
 
 
 class SpatialRevisedVAE(nn.Module):
@@ -245,5 +245,7 @@ class SpatialRevisedVAE(nn.Module):
         # q = torch.distributions.Normal(self.mu, std)
         # z = q.rsample()
         z = self.encoder(x)
+        self.mu = z[0]
+        self.var = z[1]
         return self.decoder(z)
 

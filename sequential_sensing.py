@@ -58,6 +58,7 @@ class SequentialSensingNet(nn.Module):
         # Pooling needs to get (1, ld // 4)
         # Need to average along the s x s dimension.
         self.average_pooling = nn.AvgPool1d(s * s)
+        self.activation = nn.Sigmoid()
 
     def forward(self, x):
         """
@@ -86,6 +87,7 @@ class SequentialSensingNet(nn.Module):
         # Transpose back to (1, ld // 4)
         # result = torch.transpose(pooled, 1, 2)
         # print("After transpose:", result.size())
+        result = self.activation(pooled)
 
-        return pooled
+        return result
 

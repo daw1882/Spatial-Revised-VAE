@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-import torch_directml
 
 from spectral_vae import SpatialRevisedVAE
 from spectral_dataset import SpectralVAEDataset, SpectralImage
@@ -18,10 +17,10 @@ if __name__ == '__main__':
     # Training Parameters
     model_dir = "./models"
     # image_dir = "/mnt/d/PycharmProjects/nn_data/test"
-    image_dir = "D:/PycharmProjects/nn_data/test"
+    image_dir = "D:/PycharmProjects/nn_data/318r/TIFFs"
     epochs = 5
     update_iters = 10
-    batch_size = 512
+    batch_size = 1024
     window_size = 11
     latent_dimensions = 40
 
@@ -32,10 +31,7 @@ if __name__ == '__main__':
         print(f"Model directory does not exist, creating directory at {model_dir}.")
         os.makedirs(model_dir)
 
-    if CUDA_GPU:
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    else:
-        device = torch_directml.device()
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(f"Training on device: {device}.")
 
     spec_img = SpectralImage(image_dir)

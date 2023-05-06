@@ -64,27 +64,23 @@ if __name__ == '__main__':
             model.train(True)
             losses = []
             # Train loop for single epoch
-            for i, inputs in enumerate(t_epoch):
+            for i, batch in enumerate(t_epoch):
                 t_epoch.set_description(f"Epoch {epoch}")
 
                 # Zero your gradients for every batch!
                 optimizer.zero_grad()
 
                 # Make predictions for this batch
-                outputs = model(inputs)
+                outputs = model(batch)
 
-                input_vector = utils.extract_spectral_data(inputs, model.spectral_bands)
+                input_vector = utils.extract_spectral_data(batch, model.spectral_bands)
 
                 # Compute the loss and its gradients
-                reconstruction_term = reconstruction_loss(input_vector, outputs)
-                homology_term = model.encoder.homology
-                kl_term = model.encoder.kl
+                reconstruction_term = reconstruction_loss(input_vector, outputs) / batch_size
+                homology_term = model.encoder.homology / batch_size
+                kl_term = model.encoder.kl / batch_size
                 loss = reconstruction_term + kl_term + homology_term
                 losses.append(loss.item())
-                # print("tests:")
-                # reconstruction_term.backward()
-                # kl_term.backward()
-                # homology_term.backward()
 
                 loss.backward()
 

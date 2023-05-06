@@ -178,11 +178,11 @@ class SpectralSpatialEncoder(nn.Module):
         # Output shape for spectral mean is (batch, ld // 2)
         # Output shape for spectral std is (batch, ld)
         mv, sv = split_mean_std(self.spec_encoder(spectral_encoding_data))
-        sv = torch.exp(sv)
 
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
         mv = torch.concat((xls, xss, mv), 1)
+        sv = torch.exp(sv)
 
         # Re-parameterization trick
         z = mv + sv * self.norm.sample(mv.shape).to(self.device)

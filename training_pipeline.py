@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 
 from spectral_vae import SpatialRevisedVAE
 from spectral_dataset import SpectralVAEDataset, SpectralImage
-from loss import VAE_loss
+from loss import reconstruction_loss
 import utils
 from tqdm import tqdm
 from time import sleep
@@ -71,12 +71,14 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
 
                 # Make predictions for this batch
-                outputs, xss, xls = model(inputs)
+                outputs = model(inputs)
 
                 input_vector = utils.extract_spectral_data(inputs, model.spectral_bands)
 
                 # Compute the loss and its gradients
-                reconstruction_term, kl_term, homology_term = VAE_loss(input_vector, outputs, model.mu, model.std, xls, xss)
+                reconstruction_term = reconstruction_loss(input_vector, outputs)
+                homology_term = model.encoder.homology
+                kl_term = model.encoder.kl
                 loss = reconstruction_term + kl_term + homology_term
                 losses.append(loss.item())
                 # print("tests:")

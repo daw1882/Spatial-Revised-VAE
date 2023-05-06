@@ -10,6 +10,8 @@ from sequential_sensing import SequentialSensingNet
 from local_sensing import LocalSensingNet
 import utils
 
+from loss import homology_loss, kl_loss
+
 
 class SpectralEncoder(nn.Module):
     """
@@ -132,14 +134,18 @@ class SpectralSpatialEncoder(nn.Module):
         ls_layers : The number of layers in the local sensing encoder.
         """
         super(SpectralSpatialEncoder, self).__init__()
+        self.device = device
 
         self.spat_encoder_ss = SequentialSensingNet(s, ld, spectral_bands, ss_layers)
         self.spat_encoder_ls = LocalSensingNet(s, ld, spectral_bands, ls_layers)
         self.spec_encoder = SpectralEncoder(spectral_bands, ld, device, layers)
+        self.norm = torch.distributions.Normal(0, 1)
 
         self.neighbor_window_size = s
         self.latent_dimensions = ld
         self.spectral_bands = spectral_bands
+        self.kl = 0
+        self.homology = 0
 
     # Data Tensor: (#pixel vectors, SxS, N) (all at once)
     # Data Tensor: (SxS, N) one at a time.
@@ -167,16 +173,24 @@ class SpectralSpatialEncoder(nn.Module):
         # Output shape for spatial encodings is (batch, ld // 4)
         xss = torch.squeeze(self.spat_encoder_ss(seq_sensing_data))
         xls = torch.squeeze(self.spat_encoder_ls(loc_sensing_data))
+        self.homology = homology_loss(xls, xss)
 
         # Output shape for spectral mean is (batch, ld // 2)
         # Output shape for spectral std is (batch, ld)
         mv, sv = split_mean_std(self.spec_encoder(spectral_encoding_data))
+        sv = torch.exp(sv)
 
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
         mv = torch.concat((xls, xss, mv), 1)
 
-        return mv, sv, xss, xls
+        # Re-parameterization trick
+        z = mv + sv * self.norm.sample(mv.shape).to(self.device)
+
+        # compute the KL divergence and store in the class
+        self.kl = kl_loss(mv, sv)
+
+        return z
 
 
 class SpectralSpatialDecoder(nn.Module):
@@ -192,7 +206,6 @@ class SpectralSpatialDecoder(nn.Module):
         layers : The number of layers in the spatial encoder.
         """
         super(SpectralSpatialDecoder, self).__init__()
-        self.device = device
 
         hidden_size = ld
         output_size = spectral_bands
@@ -217,18 +230,12 @@ class SpectralSpatialDecoder(nn.Module):
         Perform forward pass.
         """
 
-        mean, std, xss, xls = split_mean_std(x)
-        gaussian_noise = torch.distributions.Normal(0, 1)
-        noise = gaussian_noise.sample(mean.shape).to(self.device)
-
-        # Re-parameterization trick
-        sample = mean + (std * noise)
-        x_hat = sample
+        x_hat = x
 
         for layer in self.layers:
             x_hat = self.activation(layer(x_hat))
 
-        return x_hat, xss, xls
+        return x_hat
 
 
 class SpatialRevisedVAE(nn.Module):
@@ -240,12 +247,12 @@ class SpatialRevisedVAE(nn.Module):
                                               ss_layers, ls_layers, device)
         self.decoder = SpectralSpatialDecoder(ld, spectral_bands, layers,
                                               device)
-        self.mu = None
-        self.std = None
+        # self.mu = None
+        # self.std = None
 
     def forward(self, x):
         z = self.encoder(x)
-        self.mu = z[0]
-        self.std = z[1]
+        # self.mu = z[0]
+        # self.std = z[1]
         return self.decoder(z)
 

@@ -11,10 +11,10 @@ from time import sleep
 from datetime import datetime
 import os
 from torchsummary import summary
+import math
 
 
 if __name__ == '__main__':
-    CUDA_GPU = True
     # Training Parameters
     model_dir = "./models"
     # image_dir = "/mnt/d/PycharmProjects/nn_data/test"
@@ -84,8 +84,9 @@ if __name__ == '__main__':
                 homology_term = model.encoder.homology / batch_size
                 kl_term = model.encoder.kl / batch_size
                 loss = reconstruction_term + kl_term + homology_term
+                if math.isnan(loss.item()):
+                    raise ValueError("Loss went to nan.")
                 losses.append(loss.item())
-
                 loss.backward()
 
                 # Adjust learning weights
@@ -102,5 +103,5 @@ if __name__ == '__main__':
         avg_loss = np.average(losses)
         if avg_loss < best_loss:
             best_loss = avg_loss
-            model_path = '{}/model_{}_{}'.format(model_dir, timestamp, epoch)
+            model_path = '{}/model_{}_{}.pt'.format(model_dir, timestamp, epoch)
             torch.save(model.state_dict(), model_path)

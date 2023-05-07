@@ -10,6 +10,7 @@ from tqdm import tqdm
 from time import sleep
 from datetime import datetime
 import os
+from torchsummary import summary
 
 
 if __name__ == '__main__':
@@ -50,6 +51,9 @@ if __name__ == '__main__':
         ls_layers=3,    # CNN
         device=device,
     ).to(device)
+
+    print("Model Summary:")
+    summary(model, (window_size, window_size, spec_img.spectral_bands))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learn_rate)
     # optimizer = torch.optim.SGD(model.parameters(), lr=0.00001, momentum=0.9)

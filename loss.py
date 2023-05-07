@@ -45,6 +45,8 @@ def kl_loss(mean_vector, std_vector):
 
     # kl = ((torch.square(std_vector) + torch.square(mean_vector) -
     #        torch.log(torch.square(std_vector)) - 1) / 2).sum()
+    # print(mean_vector)
+    # print(std_vector)
     kl = (std_vector ** 2 + mean_vector ** 2
           - torch.log(std_vector) - 0.5).sum()
     return kl
@@ -64,6 +66,8 @@ def homology_loss(xls, xss):
     -------
     The computed homology loss.
     """
+    xls = xls + 1e-12
+    xss = xss + 1e-12
 
     sum_term1 = xls * torch.log(xls / xss)
     sum_term2 = xss * torch.log(xss / xls)

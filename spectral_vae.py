@@ -64,7 +64,7 @@ class SpectralEncoder(nn.Module):
                                     mean_layer_output_size, device=device)
         self.std_layer = nn.Linear(std_layer_input_size, ld, device=device)
 
-        self.activation = nn.Sigmoid()
+        self.activation = nn.ReLU()
 
     def forward(self, x):
         """
@@ -211,7 +211,7 @@ class SpectralSpatialDecoder(nn.Module):
         output_size = spectral_bands
 
         self.ld = ld
-        self.activation = nn.Sigmoid()
+        self.activation = nn.ReLU()
         self.layers = []
 
         if layers <= 1:

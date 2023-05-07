@@ -16,7 +16,7 @@ def encode(model: SpatialRevisedVAE, dataloader):
         for batch in loader:
             # you'd call model.decoder(input) for decoding part
             output = model.encoder(batch)
-            print(output, output.size())
+            # currently do nothing with the output
 
 
 if __name__ == '__main__':

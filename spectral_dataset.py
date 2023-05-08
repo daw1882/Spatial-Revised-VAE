@@ -26,26 +26,26 @@ class SpectralImage:
         for i, path in enumerate(self.image_paths):
             # Read in image in greyscale mode
             channel = cv2.imread(path, 0)
-            channel = np.transpose(channel)
             channel = np.divide(channel, 255)
             channel = np.add(channel, 1e-12)
             channel = np.expand_dims(channel, axis=2)
             if self.image is None:
-                self.width, self.height, _ = channel.shape
+                self.height, self.width, _ = channel.shape
                 self.image = channel
             else:
                 self.image = np.append(self.image, channel, axis=2)
             print(f"\tBand {i+1} loaded.")
+        self.image = np.transpose(self.image, axes=(2, 0, 1))
         print("Spectral image loaded!")
 
     def get_length(self, s):
-        r, c, _ = self.image.shape
-        return self.image[0:r-s, 0:c-s, 0].size
+        _, r, c = self.image.shape
+        return self.image[0, 0:r-s, 0:c-s].size
 
     def get_window(self, idx, s):
-        row = (idx // (self.height - s))
-        col = (idx % (self.height - s))
-        return self.image[row: row+s, col: col+s, :]
+        row = (idx // (self.width - s))
+        col = (idx % (self.width - s))
+        return self.image[:, row: row+s, col: col+s]
 
 
 class SpectralVAEDataset(Dataset):

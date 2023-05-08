@@ -45,13 +45,15 @@ class SequentialSensingNet(nn.Module):
         extractor = ExtractLSTMOutput()
         if lstm_layers == 1:
             stack = nn.LSTM(input_size=spectral_bands, hidden_size=ld // 4,
-                                  num_layers=lstm_layers)
+                            num_layers=lstm_layers, batch_first=True)
             self.lstm_stack = nn.Sequential(stack, extractor)
         else:
             # All hidden sizes are ld except for the final layer, which is output
             # as ld / 4.
-            stack = nn.LSTM(input_size=spectral_bands, hidden_size=ld, num_layers=lstm_layers - 1)
-            final = nn.LSTM(input_size=ld, hidden_size=ld // 4, num_layers=1)
+            stack = nn.LSTM(input_size=spectral_bands, hidden_size=ld,
+                            num_layers=lstm_layers - 1, batch_first=True)
+            final = nn.LSTM(input_size=ld, hidden_size=ld // 4,
+                            num_layers=1, batch_first=True)
             self.lstm_stack = nn.Sequential(stack, extractor, final, extractor)
 
         # Setup average pooling

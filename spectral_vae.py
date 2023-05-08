@@ -164,7 +164,8 @@ class SpectralSpatialEncoder(nn.Module):
         # Dimension of output: (batch, s^2, N)
         seq_sensing_data = utils.extract_sequential_data(x)
         # Dimension of output: (batch, N, s, s)
-        loc_sensing_data = utils.extract_local_data(x)
+        # loc_sensing_data = utils.extract_local_data(x)
+        loc_sensing_data = x
         # Dimension of output: (batch, 1, N), the center pixel vector
         spectral_encoding_data = utils.extract_spectral_data(x, self.spectral_bands)
 
@@ -182,6 +183,7 @@ class SpectralSpatialEncoder(nn.Module):
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
         mv = torch.concat((xls, xss, mv), 1)
+        # TODO: look into the exp
         sv = torch.exp(sv)
 
         # Re-parameterization trick

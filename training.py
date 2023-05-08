@@ -14,6 +14,25 @@ from torchsummary import summary
 import math
 import json
 import argparse
+import torchvision
+
+
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = np.inf
+
+    def early_stop(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
 
 
 if __name__ == '__main__':
@@ -80,8 +99,8 @@ if __name__ == '__main__':
         device=device,
     ).to(device)
 
-    print("Model Summary:")
-    summary(model, (window_size, window_size, spec_img.spectral_bands))
+    # print("Model Summary:")
+    # summary(model, (spec_img.spectral_bands, window_size, window_size))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learn_rate)
     # optimizer = torch.optim.SGD(model.parameters(), lr=0.00001, momentum=0.9)
@@ -90,6 +109,7 @@ if __name__ == '__main__':
     sleep(0.5)
     best_loss = 1_000_000.
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    early_stopper = EarlyStopper(patience=3, min_delta=10)
     for epoch in range(epochs):
         with tqdm(dataloader, miniters=update_iters, unit="batch") as t_epoch:
             # Make sure gradient tracking is on, and do a pass over the data
@@ -114,10 +134,14 @@ if __name__ == '__main__':
                 # print("reconstruction loss", reconstruction_term)
                 # print("homology loss", homology_term)
                 # print("kl loss", kl_term)
-                if i < 100:
-                    loss = reconstruction_term + kl_term + homology_term
-                else:
-                    loss = reconstruction_term + homology_term
+
+                # if i > 1000:
+                #     loss = reconstruction_term + kl_term + homology_term
+                # else:
+                #     loss = reconstruction_term + homology_term
+                loss = reconstruction_term + kl_term + homology_term
+                # if early_stopper.early_stop(loss):
+                #     break
                 if math.isnan(loss.item()):
                     raise ValueError("Loss went to nan.")
                 losses.append(loss.item())

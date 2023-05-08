@@ -109,8 +109,8 @@ if __name__ == '__main__':
         device=device,
     ).to(device)
 
-    # print("Model Summary:")
-    # summary(model, (spec_img.spectral_bands, window_size, window_size))
+    print("Model Summary:")
+    summary(model, (spec_img.spectral_bands, window_size, window_size))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learn_rate)
     # optimizer = torch.optim.SGD(model.parameters(), lr=0.00001, momentum=0.9)

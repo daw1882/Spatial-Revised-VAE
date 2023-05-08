@@ -9,6 +9,7 @@ import torch.nn as nn
 from sequential_sensing import SequentialSensingNet
 from local_sensing import LocalSensingNet
 import utils
+from collections import OrderedDict
 
 from loss import homology_loss, kl_loss
 
@@ -213,31 +214,34 @@ class SpectralSpatialDecoder(nn.Module):
         output_size = spectral_bands
 
         self.ld = ld
-        self.activation = nn.Sigmoid()
         self.layers = []
 
         if layers <= 1:
-            self.layers.append(nn.Linear(ld, output_size, device=device))
+            self.layers.append(("linear",
+                                nn.Linear(ld, output_size, device=device)))
+            self.layers.append(("sigmoid", nn.Sigmoid()))
+            self.stack = nn.Sequential(OrderedDict(self.layers))
             return
 
-        self.layers.append(nn.Linear(ld, hidden_size, device=device))
+        self.layers.append(("linear",
+                            nn.Linear(ld, hidden_size, device=device)))
+        self.layers.append(("relu", nn.ReLU()))
         # Middle layers
         for _ in range(1, layers - 1):
-            self.layers.append(nn.Linear(hidden_size, hidden_size, device=device))
+            self.layers.append(("linear",
+                                nn.Linear(hidden_size, hidden_size, device=device)))
+            self.layers.append(("relu", nn.ReLU()))
 
-        self.layers.append(nn.Linear(hidden_size, output_size, device=device))
+        self.layers.append(("linear",
+                            nn.Linear(hidden_size, output_size, device=device)))
+        self.layers.append(("sigmoid", nn.Sigmoid()))
+        self.stack = nn.Sequential(OrderedDict(self.layers))
 
     def forward(self, x):
         """
         Perform forward pass.
         """
-
-        x_hat = x
-
-        for layer in self.layers:
-            x_hat = layer(x_hat)
-
-        return x_hat
+        return self.stack(x)
 
 
 class SpatialRevisedVAE(nn.Module):

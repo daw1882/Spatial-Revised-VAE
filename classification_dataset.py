@@ -97,7 +97,7 @@ if __name__ == '__main__':
         ss_layers=model_config["ss_layers"],  # LSTM
         ls_layers=model_config["ls_layers"],  # CNN
         device=device,
-    )
+    ).to(device)
     model.load_state_dict(torch.load(args.model))
     model.eval()
     print("Model loaded!")

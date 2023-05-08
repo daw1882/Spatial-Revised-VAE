@@ -1,0 +1,14 @@
+{
+  "training": {
+    "epochs": 5,
+    "batch_size": 1024,
+    "learn_rate": 0.001
+  },
+  "model": {
+    "window_size": 11,
+    "latent_dims": 40,
+    "ae_layers": 3,
+    "ss_layers": 3,
+    "ls_layers": 3
+  }
+}

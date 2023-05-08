@@ -9,6 +9,7 @@ import torch.nn as nn
 from sequential_sensing import SequentialSensingNet
 from local_sensing import LocalSensingNet
 import utils
+from collections import OrderedDict
 
 from loss import homology_loss, kl_loss
 
@@ -83,13 +84,13 @@ class SpectralEncoder(nn.Module):
 
         # Forward pass of stacked layers (n-1) layers.
         for layer in self.layers:
-            x = self.activation(layer(x))
+            x = layer(x)
 
         # Compute mean vector
-        mean_vector = self.activation(self.mean_layer(x))
+        mean_vector = self.mean_layer(x)
 
         # Compute std vector
-        std_vector = self.activation(self.std_layer(x))
+        std_vector = self.std_layer(x)
 
         return mean_vector, std_vector
 
@@ -164,9 +165,10 @@ class SpectralSpatialEncoder(nn.Module):
         # Dimension of output: (batch, s^2, N)
         seq_sensing_data = utils.extract_sequential_data(x)
         # Dimension of output: (batch, N, s, s)
-        loc_sensing_data = utils.extract_local_data(x)
+        # loc_sensing_data = utils.extract_local_data(x)
+        loc_sensing_data = x
         # Dimension of output: (batch, 1, N), the center pixel vector
-        spectral_encoding_data = utils.extract_spectral_data(x, self.spectral_bands)
+        spectral_encoding_data = utils.extract_spectral_data(x, self.neighbor_window_size)
 
         # Pass data to each encoder
         
@@ -182,6 +184,7 @@ class SpectralSpatialEncoder(nn.Module):
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
         mv = torch.concat((xls, xss, mv), 1)
+        # TODO: look into the exp
         sv = torch.exp(sv)
 
         # Re-parameterization trick
@@ -211,31 +214,34 @@ class SpectralSpatialDecoder(nn.Module):
         output_size = spectral_bands
 
         self.ld = ld
-        self.activation = nn.Sigmoid()
         self.layers = []
 
         if layers <= 1:
-            self.layers.append(nn.Linear(ld, output_size, device=device))
+            self.layers.append(("linear",
+                                nn.Linear(ld, output_size, device=device)))
+            self.layers.append(("sigmoid", nn.Sigmoid()))
+            self.stack = nn.Sequential(OrderedDict(self.layers))
             return
 
-        self.layers.append(nn.Linear(ld, hidden_size, device=device))
+        self.layers.append(("linear",
+                            nn.Linear(ld, hidden_size, device=device)))
+        self.layers.append(("relu", nn.ReLU()))
         # Middle layers
         for _ in range(1, layers - 1):
-            self.layers.append(nn.Linear(hidden_size, hidden_size, device=device))
+            self.layers.append(("linear",
+                                nn.Linear(hidden_size, hidden_size, device=device)))
+            self.layers.append(("relu", nn.ReLU()))
 
-        self.layers.append(nn.Linear(hidden_size, output_size, device=device))
+        self.layers.append(("linear",
+                            nn.Linear(hidden_size, output_size, device=device)))
+        self.layers.append(("sigmoid", nn.Sigmoid()))
+        self.stack = nn.Sequential(OrderedDict(self.layers))
 
     def forward(self, x):
         """
         Perform forward pass.
         """
-
-        x_hat = x
-
-        for layer in self.layers:
-            x_hat = self.activation(layer(x_hat))
-
-        return x_hat
+        return self.stack(x)
 
 
 class SpatialRevisedVAE(nn.Module):

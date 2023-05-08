@@ -42,11 +42,13 @@ def kl_loss(mean_vector, std_vector):
     The kl-divergence between the latent distribution and the normal
     distribution.
     """
+    kl = ((torch.square(std_vector) + torch.square(mean_vector) -
+           torch.log(torch.square(std_vector)) - 1) / 2).sum(dim=1).mean()
 
-    # kl = ((torch.square(std_vector) + torch.square(mean_vector) -
-    #        torch.log(torch.square(std_vector)) - 1) / 2).sum()
-    kl = (std_vector ** 2 + mean_vector ** 2
-          - torch.log(std_vector) - 0.5).sum()
+    # print("mean vec", mean_vector, mean_vector.size())
+    # print("std vector", std_vector, std_vector.size())
+    # kl = (std_vector ** 2 + mean_vector ** 2
+    #       - torch.log(std_vector) - 0.5).sum(dim=1).mean()
     return kl
 
 
@@ -64,12 +66,9 @@ def homology_loss(xls, xss):
     -------
     The computed homology loss.
     """
-
+    # print("xls", xls, xls.size())
+    # print("xss", xss, xss.size())
     sum_term1 = xls * torch.log(xls / xss)
     sum_term2 = xss * torch.log(xss / xls)
-
-    # print("SUM TERM1", sum_term1)
-    # print("SUM TERM2", sum_term2)
-    sum_term = sum_term1 + sum_term2
-    sum_result = torch.sum(sum_term)
-    return sum_result / 2
+    homology = ((sum_term1 + sum_term2).sum(dim=1) / 2).mean()
+    return homology

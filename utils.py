@@ -41,21 +41,21 @@ def extract_sequential_data(x):
     ----------
     x : The input tensor.
     """
-    return torch.flatten(x, start_dim=1, end_dim=2)
+    return torch.transpose(torch.flatten(x, start_dim=2, end_dim=3), dim0=1, dim1=2)
 
 
-def extract_local_data(x):
-    """
-    Extract the local sensing data.
+# def extract_local_data(x):
+#     """
+#     Extract the local sensing data.
+#
+#     Parameters
+#     ----------
+#     x : The input tensor.
+#     """
+#     return torch.transpose(x, 1, 3)
 
-    Parameters
-    ----------
-    x : The input tensor.
-    """
-    return torch.transpose(x, 1, 3)
 
-
-def extract_spectral_data(x, spectral_bands):
+def extract_spectral_data(x, window_size):
     """
     Extract the spectral sensing data.
 
@@ -63,4 +63,4 @@ def extract_spectral_data(x, spectral_bands):
     ----------
     x : The input tensor.
     """
-    return x[:, spectral_bands//2, spectral_bands//2, :]
+    return x[:, :, window_size // 2, window_size // 2]

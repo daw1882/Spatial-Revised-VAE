@@ -184,7 +184,6 @@ class SpectralSpatialEncoder(nn.Module):
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
         mv = torch.concat((xls, xss, mv), 1)
-        # TODO: look into the exp
         sv = torch.exp(sv)
 
         # Re-parameterization trick
@@ -253,12 +252,8 @@ class SpatialRevisedVAE(nn.Module):
                                               ss_layers, ls_layers, device)
         self.decoder = SpectralSpatialDecoder(ld, spectral_bands, layers,
                                               device)
-        # self.mu = None
-        # self.std = None
 
     def forward(self, x):
         z = self.encoder(x)
-        # self.mu = z[0]
-        # self.std = z[1]
         return self.decoder(z)
 

@@ -114,7 +114,6 @@ if __name__ == '__main__':
     # summary(model, (spec_img.spectral_bands, window_size, window_size))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learn_rate)
-    # optimizer = torch.optim.SGD(model.parameters(), lr=0.00001, momentum=0.9)
 
     print("Beginning Training!")
     sleep(0.5)
@@ -142,17 +141,7 @@ if __name__ == '__main__':
                 reconstruction_term = reconstruction_loss(input_vector, outputs)
                 homology_term = model.encoder.homology
                 kl_term = model.encoder.kl
-                # print("reconstruction loss", reconstruction_term)
-                # print("homology loss", homology_term)
-                # print("kl loss", kl_term)
-
-                # if i > 1000:
-                #     loss = reconstruction_term + kl_term + homology_term
-                # else:
-                #     loss = reconstruction_term + homology_term
                 loss = reconstruction_term + kl_term + homology_term
-                # if early_stopper.early_stop(loss):
-                #     break
                 if math.isnan(loss.item()):
                     raise ValueError("Loss went to nan.")
                 losses.append(loss.item())

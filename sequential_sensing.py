@@ -11,7 +11,6 @@ import torch.nn as nn
 class ExtractLSTMOutput(nn.Module):
     def forward(self, x):
         output, _ = x
-        # print("Extractor", output.get_device())
         return output
 
 

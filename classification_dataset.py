@@ -101,8 +101,8 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(args.model))
     model.eval()
     print("Model loaded!")
-    print("Model Summary:")
-    summary(model, (img.spectral_bands, model_config["window_size"], model_config["window_size"]))
+    # print("Model Summary:")
+    # summary(model, (img.spectral_bands, model_config["window_size"], model_config["window_size"]))
 
     make_classification_dataset(model, dataloader, labels)
 

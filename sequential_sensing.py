@@ -59,7 +59,7 @@ class SequentialSensingNet(nn.Module):
         # Pooling needs to get (1, ld // 4)
         # Need to average along the s x s dimension.
         self.average_pooling = nn.AvgPool1d(s * s)
-        self.activation = nn.ReLU()
+        self.activation = nn.Sigmoid()
 
     def forward(self, x):
         """

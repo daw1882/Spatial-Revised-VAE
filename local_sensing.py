@@ -61,7 +61,7 @@ class LocalSensingNet(nn.Module):
             )
 
         self.cnn_layers = nn.Sequential(OrderedDict(cnn_layer_list))
-        self.activation = nn.ReLU()
+        self.activation = nn.Sigmoid()
 
     def forward(self, x):
         return self.activation(self.cnn_layers(x))

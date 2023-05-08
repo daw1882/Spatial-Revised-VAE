@@ -12,21 +12,49 @@ from datetime import datetime
 import os
 from torchsummary import summary
 import math
+import json
+import argparse
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--model_dir',
+        help='Directory to save model directories in.',
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        '--config',
+        help='Configuration file containing model parameters.',
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        '--image',
+        help='Path to hyperspectral image directory.',
+        required=True,
+        type=str,
+    )
+    args = parser.parse_args()
+
+    with open(args.config, 'r') as f:
+        config = json.load(f)
+    model_config = config["model"]
+    train_config = config["training"]
+
     # Training Parameters
-    model_dir = "./models"
+    model_dir = args.model_dir
     # image_dir = "/mnt/d/PycharmProjects/nn_data/test"
-    image_dir = "D:/PycharmProjects/nn_data/training"
-    epochs = 5
+    image_dir = args.image
+    epochs = train_config["epochs"]
     update_iters = 10
-    batch_size = 1024
-    window_size = 11
-    latent_dimensions = 40
+    batch_size = train_config["batch_size"]
+    window_size = model_config["window_size"]
+    latent_dimensions = model_config["latent_dims"]
 
     # Optimizer Parameters
-    learn_rate = 0.001
+    learn_rate = train_config["learn_rate"]
 
     if not os.path.exists(model_dir):
         print(f"Model directory does not exist, creating directory at {model_dir}.")
@@ -46,9 +74,9 @@ if __name__ == '__main__':
         s=window_size,
         ld=latent_dimensions,
         spectral_bands=spec_img.spectral_bands,
-        layers=3,       # Encoder
-        ss_layers=3,    # LSTM
-        ls_layers=3,    # CNN
+        layers=model_config["ae_layers"],       # Encoder
+        ss_layers=model_config["ss_layers"],    # LSTM
+        ls_layers=model_config["ls_layers"],    # CNN
         device=device,
     ).to(device)
 
@@ -80,9 +108,13 @@ if __name__ == '__main__':
                 input_vector = utils.extract_spectral_data(batch, model.spectral_bands)
 
                 # Compute the loss and its gradients
-                reconstruction_term = reconstruction_loss(input_vector, outputs) / batch_size
-                homology_term = model.encoder.homology / batch_size
-                kl_term = model.encoder.kl / batch_size
+                reconstruction_term = reconstruction_loss(input_vector, outputs)
+                homology_term = model.encoder.homology
+                kl_term = model.encoder.kl
+                # print("reconstruction loss", reconstruction_term)
+                # print("homology loss", homology_term)
+                # print("kl loss", kl_term)
+
                 loss = reconstruction_term + kl_term + homology_term
                 if math.isnan(loss.item()):
                     raise ValueError("Loss went to nan.")

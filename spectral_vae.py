@@ -83,13 +83,13 @@ class SpectralEncoder(nn.Module):
 
         # Forward pass of stacked layers (n-1) layers.
         for layer in self.layers:
-            x = self.activation(layer(x))
+            x = layer(x)
 
         # Compute mean vector
-        mean_vector = self.activation(self.mean_layer(x))
+        mean_vector = self.mean_layer(x)
 
         # Compute std vector
-        std_vector = self.activation(self.std_layer(x))
+        std_vector = self.std_layer(x)
 
         return mean_vector, std_vector
 
@@ -233,7 +233,7 @@ class SpectralSpatialDecoder(nn.Module):
         x_hat = x
 
         for layer in self.layers:
-            x_hat = self.activation(layer(x_hat))
+            x_hat = layer(x_hat)
 
         return x_hat
 

@@ -114,8 +114,10 @@ if __name__ == '__main__':
                 # print("reconstruction loss", reconstruction_term)
                 # print("homology loss", homology_term)
                 # print("kl loss", kl_term)
-
-                loss = reconstruction_term + kl_term + homology_term
+                if i == 100:
+                    loss = reconstruction_term + kl_term + homology_term
+                else:
+                    loss = reconstruction_term + homology_term
                 if math.isnan(loss.item()):
                     raise ValueError("Loss went to nan.")
                 losses.append(loss.item())

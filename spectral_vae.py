@@ -167,7 +167,7 @@ class SpectralSpatialEncoder(nn.Module):
         # loc_sensing_data = utils.extract_local_data(x)
         loc_sensing_data = x
         # Dimension of output: (batch, 1, N), the center pixel vector
-        spectral_encoding_data = utils.extract_spectral_data(x, self.spectral_bands)
+        spectral_encoding_data = utils.extract_spectral_data(x, self.neighbor_window_size)
 
         # Pass data to each encoder
         

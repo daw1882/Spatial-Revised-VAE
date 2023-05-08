@@ -55,7 +55,7 @@ def extract_sequential_data(x):
 #     return torch.transpose(x, 1, 3)
 
 
-def extract_spectral_data(x, spectral_bands):
+def extract_spectral_data(x, window_size):
     """
     Extract the spectral sensing data.
 
@@ -63,4 +63,4 @@ def extract_spectral_data(x, spectral_bands):
     ----------
     x : The input tensor.
     """
-    return x[:, :, spectral_bands//2, spectral_bands//2]
+    return x[:, :, window_size // 2, window_size // 2]

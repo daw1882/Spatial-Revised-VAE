@@ -3,5 +3,7 @@ numpy~=1.24.3
 opencv-python~=4.7.0.72
 tqdm~=4.65.0
 torch-summary
-torchvision
+torchvision~=0.15.1
 torchaudio
+scipy~=1.10.1
+scikit-learn

@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+import scipy
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -8,22 +9,33 @@ from torch.utils.data import Dataset, DataLoader
 
 class SpectralImage:
 
-    def __init__(self, image_dir):
+    def __init__(self, image_path, data_type='dir', data_key=None):
         self.image = None
-        self.perm = None
         self.width = None
         self.height = None
-        self.image_paths = []
-        self.image_dir = image_dir
-        image_names = os.listdir(image_dir)
-        for image in image_names:
-            self.image_paths.append(image_dir + "/" + image)
-        self.spectral_bands = len(self.image_paths)
-        self.load_spectral_image()
-
-    def load_spectral_image(self):
+        self.data_key = data_key
+        self.image_path = image_path
+        self.spectral_bands = 0
         print("Loading in spectral image...")
-        for i, path in enumerate(self.image_paths):
+        if data_type == 'mat':
+            self.load_spectral_mat()
+        else:
+            self.band_paths = []
+            image_names = os.listdir(image_path)
+            for image in image_names:
+                self.band_paths.append(image_path + "/" + image)
+            self.load_spectral_dir()
+        print("Spectral image loaded!")
+
+    def load_spectral_mat(self):
+        spec_img = scipy.io.loadmat(self.image_path)[self.data_key]
+        spec_img = (spec_img - np.min(spec_img)) / (np.max(spec_img) - np.min(spec_img))
+        self.width, self.height, self.spectral_bands = spec_img.shape
+        self.image = np.transpose(spec_img, axes=(2, 1, 0))
+
+    def load_spectral_dir(self):
+        self.spectral_bands = len(self.band_paths)
+        for i, path in enumerate(self.band_paths):
             # Read in image in greyscale mode
             channel = cv2.imread(path, 0)
             channel = np.divide(channel, 255)
@@ -36,7 +48,6 @@ class SpectralImage:
                 self.image = np.append(self.image, channel, axis=2)
             print(f"\tBand {i+1} loaded.")
         self.image = np.transpose(self.image, axes=(2, 0, 1))
-        print("Spectral image loaded!")
 
     def get_length(self, s):
         _, r, c = self.image.shape

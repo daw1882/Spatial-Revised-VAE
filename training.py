@@ -51,8 +51,18 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--image',
-        help='Path to hyperspectral image directory.',
+        help='Path to hyperspectral image data.',
         required=True,
+        type=str,
+    )
+    parser.add_argument(
+        '--data_key',
+        help='Key for accessing the data from a .mat file.',
+        type=str,
+    )
+    parser.add_argument(
+        '--data_type',
+        help='Form that the hyperspectral image is stored in.',
         type=str,
     )
     args = parser.parse_args()
@@ -82,7 +92,7 @@ if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(f"Training on device: {device}.")
 
-    spec_img = SpectralImage(image_dir)
+    spec_img = SpectralImage(image_dir, data_type=args.data_type, data_key=args.data_key)
     dataset = SpectralVAEDataset(spec_img, window_size, device)
     dataloader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True, num_workers=0,
@@ -117,7 +127,7 @@ if __name__ == '__main__':
             losses = []
             # Train loop for single epoch
             for i, batch in enumerate(t_epoch):
-                t_epoch.set_description(f"Epoch {epoch}")
+                t_epoch.set_description(f"Epoch {epoch+1}")
 
                 # Zero your gradients for every batch!
                 optimizer.zero_grad()
@@ -125,7 +135,7 @@ if __name__ == '__main__':
                 # Make predictions for this batch
                 outputs = model(batch)
 
-                input_vector = utils.extract_spectral_data(batch, model.spectral_bands)
+                input_vector = utils.extract_spectral_data(batch, window_size)
 
                 # Compute the loss and its gradients
                 reconstruction_term = reconstruction_loss(input_vector, outputs)

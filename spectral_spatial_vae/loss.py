@@ -28,7 +28,7 @@ def reconstruction_loss(input_vector, predicted_vector):
     The mean-squared error (reconstruction loss) between the two vectors.
     """
     # return MSE(predicted_vector, input_vector)
-    return torch.square((input_vector-predicted_vector)).sum(dim=1).mean()
+    return torch.square((input_vector-predicted_vector)).sum()
 
 
 def kl_loss(mean_vector, std_vector):

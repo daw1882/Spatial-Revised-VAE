@@ -63,7 +63,7 @@ if __name__ == '__main__':
     model_dir = args.model_dir
     image_dir = args.image
     epochs = train_config["epochs"]
-    update_iters = 10
+    update_iters = 1
     batch_size = train_config["batch_size"]
     window_size = model_config["window_size"]
     latent_dimensions = model_config["latent_dims"]
@@ -123,15 +123,17 @@ if __name__ == '__main__':
                 outputs = model(batch)
 
                 input_vector = utils.extract_spectral_data(batch, window_size)
+                # print("\nOriginal\n", input_vector, input_vector.size())
+                # print("\nDecoded\n", outputs, outputs.size())
 
                 # Compute the loss and its gradients
-                reconstruction_term = reconstruction_loss(input_vector, outputs)
+                reconstruction_term = reconstruction_loss(input_vector,
+                                                          outputs)
                 homology_term = model.encoder.homology
                 kl_term = model.encoder.kl
                 loss = reconstruction_term + kl_term + homology_term
-                if math.isnan(loss.item()):
-                    raise ValueError("Loss went to nan.")
-                losses.append(loss.item())
+                losses.append([loss.item(), reconstruction_term.item(),
+                               kl_term.item(), homology_term.item()])
                 loss.backward()
 
                 # Adjust learning weights
@@ -144,9 +146,19 @@ if __name__ == '__main__':
                         "kl": "{:.4f}".format(kl_term.item()),
                         "homology": "{:.4f}".format(homology_term.item()),
                     })
+                if math.isnan(loss.item()):
+                    raise ValueError("Loss went to nan.")
+                if i == len(t_epoch)-1:
+                    avg_loss = np.average(np.array(losses), axis=0)
+                    t_epoch.set_postfix({
+                        "loss": "{:.4f}".format(avg_loss[0]),
+                        "reconstruction": "{:.4f}".format(avg_loss[1]),
+                        "kl": "{:.4f}".format(avg_loss[2]),
+                        "homology": "{:.4f}".format(avg_loss[3]),
+                    })
 
-        avg_loss = np.average(losses)
-        if avg_loss < best_loss:
-            best_loss = avg_loss
+        avg_loss = np.average(np.array(losses), axis=0)
+        if avg_loss[0] < best_loss:
+            best_loss = avg_loss[0]
             model_path = '{}/model_{}_{}.pt'.format(model_dir, timestamp, epoch)
             torch.save(model.state_dict(), model_path)

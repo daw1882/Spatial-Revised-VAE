@@ -9,6 +9,7 @@ CSCI 736
 import argparse
 import csv
 import json
+import time
 
 import numpy as np
 import pandas as pd
@@ -21,12 +22,15 @@ from spectral_dataset import SpectralImage, SpectralVAEDataset
 from spectral_spatial_vae.spectral_vae import SpatialRevisedVAE
 
 
-def make_classification_dataset(model: SpatialRevisedVAE, dataloader, labels):
+def make_classification_dataset(model: SpatialRevisedVAE, dataloader, labels,
+                                output_dir, out_type="classification"):
     """
     Create a dataset for classification of spectral pixel vectors.
 
     Parameters
     ----------
+    out_type
+        The type of dataset to make.
     model
         The VAE model for extracting features.
     dataloader
@@ -38,15 +42,16 @@ def make_classification_dataset(model: SpatialRevisedVAE, dataloader, labels):
     -------
     A DataFrame containing the encoded pixel vectors and labels.
     """
-    with open('output.csv', 'w') as f:
+    with open(output_dir, 'w') as f:
         writer = csv.writer(f, lineterminator="\n")
         with tqdm(dataloader, unit="batch") as loader:
             for batch in loader:
                 encoded = model.encoder(batch)
                 writer.writerows(encoded.tolist())
-    df = pd.read_csv('output.csv', header=None)
-    df['labels'] = labels
-    df.to_csv('output.csv', header=False)
+    df = pd.read_csv(output_dir, header=None)
+    if out_type == 'classification' and labels is not None:
+        df['labels'] = labels
+        df.to_csv(output_dir, header=False)
     return df
 
 
@@ -73,8 +78,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--labels',
         help='Path to hyperspectral image directory.',
-        required=True,
         type=str,
+        default=None,
     )
     parser.add_argument(
         '--output_dir',
@@ -88,8 +93,18 @@ if __name__ == '__main__':
         type=str,
     )
     parser.add_argument(
+        '--data_key_gt',
+        help='Key for accessing the data from a .mat file.',
+        type=str,
+    )
+    parser.add_argument(
         '--data_type',
         help='Form that the hyperspectral image is stored in.',
+        type=str,
+    )
+    parser.add_argument(
+        '--output_type',
+        help='Type of data to output in CSV.',
         type=str,
     )
     args = parser.parse_args()
@@ -106,12 +121,15 @@ if __name__ == '__main__':
     loader = DataLoader(
         dataset, batch_size=1024, shuffle=False, num_workers=0,
     )
-    gt = np.transpose(
-        scipy.io.loadmat(args.labels)[args.data_key + "_gt"]
-    )
-    r, c = gt.shape
-    gt = gt[0:r-model_config["window_size"], 0:c-model_config[
-        "window_size"]].flatten()
+    if args.output_type == "classification":
+        gt = np.transpose(
+            scipy.io.loadmat(args.labels)[args.data_key_gt]
+        )
+        r, c = gt.shape
+        gt = gt[0:r-model_config["window_size"], 0:c-model_config[
+            "window_size"]].flatten()
+    else:
+        gt = None
 
     vae = SpatialRevisedVAE(
         s=model_config["window_size"],
@@ -125,5 +143,7 @@ if __name__ == '__main__':
     vae.load_state_dict(torch.load(args.model))
     vae.eval()
     print("Model loaded!")
+    time.sleep(0.5)
 
-    make_classification_dataset(vae, loader, gt)
+    make_classification_dataset(vae, loader, gt, args.output_dir,
+                                args.output_type)

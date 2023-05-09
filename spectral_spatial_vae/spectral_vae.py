@@ -58,11 +58,17 @@ class SpectralEncoder(nn.Module):
         self.layers = []
 
         if layers >= 2:
-            self.layers.append(nn.Linear(spectral_bands, hidden_size,
-                                         device=device))
-            for _ in range(1, layers - 1):
-                self.layers.append(nn.Linear(hidden_size, hidden_size,
-                                             device=device))
+            self.layers.append(
+                ("linear1",
+                 nn.Linear(spectral_bands, hidden_size, device=device))
+            )
+            self.layers.append(("relu1", nn.ReLU()))
+            for i in range(1, layers - 1):
+                self.layers.append(
+                    (f"linear{i+1}",
+                     nn.Linear(hidden_size, hidden_size, device=device))
+                )
+                self.layers.append((f"relu{i + 1}", nn.ReLU()))
         else:
             mean_layer_input_size = spectral_bands
             std_layer_input_size = spectral_bands
@@ -71,7 +77,8 @@ class SpectralEncoder(nn.Module):
                                     mean_layer_output_size, device=device)
         self.std_layer = nn.Linear(std_layer_input_size, ld, device=device)
 
-        self.activation = nn.ReLU()
+        self.stack = nn.Sequential(OrderedDict(self.layers))
+        print(self.stack)
 
     def forward(self, x):
         """
@@ -90,9 +97,7 @@ class SpectralEncoder(nn.Module):
         """
 
         # Forward pass of stacked layers (n-1) layers.
-        for layer in self.layers:
-            x = layer(x)
-        x = self.activation(x)
+        x = self.stack(x)
 
         # Compute mean vector
         mean_vector = self.mean_layer(x)
@@ -258,6 +263,7 @@ class SpectralSpatialDecoder(nn.Module):
         self.layers.append(
             (f"linear{layers}", nn.Linear(hidden_size, output_size, device=device))
         )
+        self.layers.append(("batchnorm", nn.BatchNorm1d(output_size)))
         self.layers.append((f"sigmoid{layers}", nn.Sigmoid()))
 
         # Generate the full sequential stack

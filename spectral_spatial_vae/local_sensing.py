@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 import torch.nn as nn
 
-from utils import compute_kernel_sizes
+from spectral_spatial_vae.utils import compute_kernel_sizes
 
 
 class LocalSensingNet(nn.Module):

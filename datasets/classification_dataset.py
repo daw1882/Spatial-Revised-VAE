@@ -77,6 +77,12 @@ if __name__ == '__main__':
         type=str,
     )
     parser.add_argument(
+        '--output_dir',
+        help='Path to output the dataset to.',
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
         '--data_key',
         help='Key for accessing the data from a .mat file.',
         type=str,
@@ -97,17 +103,17 @@ if __name__ == '__main__':
     img = SpectralImage(args.image, args.data_type, args.data_key)
     dataset = SpectralVAEDataset(img, model_config["window_size"],
                                  device=device)
-    dataloader = DataLoader(
+    loader = DataLoader(
         dataset, batch_size=1024, shuffle=False, num_workers=0,
     )
-    labels = np.transpose(
+    gt = np.transpose(
         scipy.io.loadmat(args.labels)[args.data_key + "_gt"]
     )
-    r, c = labels.shape
-    labels = labels[0:r-model_config["window_size"], 0:c-model_config["window_size"]].flatten()
-    print(len(dataset), labels.size)
+    r, c = gt.shape
+    gt = gt[0:r-model_config["window_size"], 0:c-model_config[
+        "window_size"]].flatten()
 
-    model = SpatialRevisedVAE(
+    vae = SpatialRevisedVAE(
         s=model_config["window_size"],
         ld=model_config["latent_dims"],
         spectral_bands=img.spectral_bands,
@@ -116,8 +122,8 @@ if __name__ == '__main__':
         ls_layers=model_config["ls_layers"],  # CNN
         device=device,
     ).to(device)
-    model.load_state_dict(torch.load(args.model))
-    model.eval()
+    vae.load_state_dict(torch.load(args.model))
+    vae.eval()
     print("Model loaded!")
 
-    make_classification_dataset(model, dataloader, labels)
+    make_classification_dataset(vae, loader, gt)

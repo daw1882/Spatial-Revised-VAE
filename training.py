@@ -14,7 +14,7 @@ from time import sleep
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torchsummary import summary
 from tqdm import tqdm
 
@@ -76,22 +76,26 @@ if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(f"Training on device: {device}.")
 
-    spec_img = SpectralImage(image_dir, data_type=args.data_type, data_key=args.data_key)
+    spec_img = SpectralImage(image_dir, data_type=args.data_type,
+                             data_key=args.data_key)
     dataset = SpectralVAEDataset(spec_img, window_size, device)
+    train_data, _ = random_split(dataset, [train_config["train_split"],
+                                           1-train_config["train_split"]])
     dataloader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, num_workers=0,
+        train_data, batch_size=batch_size, shuffle=True, num_workers=0,
     )
-    print("datasets created!")
+    print("Dataloader created!")
 
     model = SpatialRevisedVAE(
         s=window_size,
         ld=latent_dimensions,
         spectral_bands=spec_img.spectral_bands,
-        spec_layers=model_config["ae_layers"],       # Encoder
+        spec_layers=model_config["ae_layers"],  # Encoder
         ss_layers=model_config["ss_layers"],    # LSTM
         ls_layers=model_config["ls_layers"],    # CNN
         device=device,
     ).to(device)
+    print("Model initialized!")
 
     if device.type == "cpu":
         print("Model Summary:")
@@ -119,6 +123,8 @@ if __name__ == '__main__':
                 outputs = model(batch)
 
                 input_vector = utils.extract_spectral_data(batch, window_size)
+                # print("original", input_vector, input_vector.size())
+                # print("decoded", outputs, outputs.size())
 
                 # Compute the loss and its gradients
                 reconstruction_term = reconstruction_loss(input_vector, outputs)

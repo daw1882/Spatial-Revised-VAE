@@ -24,8 +24,6 @@ if __name__ == '__main__':
     print(x_train.shape, x_test.shape)
     print(y_train.shape, y_test.shape)
 
-    exit()
-
     print("--------------------")
     print("Training...")
     # clf = svm.SVC()

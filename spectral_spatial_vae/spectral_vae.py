@@ -10,10 +10,10 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 
-import utils
-from local_sensing import LocalSensingNet
-from loss import homology_loss, kl_loss
-from sequential_sensing import SequentialSensingNet
+import spectral_spatial_vae.utils as utils
+from spectral_spatial_vae.local_sensing import LocalSensingNet
+from spectral_spatial_vae.loss import homology_loss, kl_loss
+from spectral_spatial_vae.sequential_sensing import SequentialSensingNet
 
 
 class SpectralEncoder(nn.Module):
@@ -71,7 +71,7 @@ class SpectralEncoder(nn.Module):
                                     mean_layer_output_size, device=device)
         self.std_layer = nn.Linear(std_layer_input_size, ld, device=device)
 
-        self.activation = nn.Sigmoid()
+        self.activation = nn.ReLU()
 
     def forward(self, x):
         """
@@ -92,6 +92,7 @@ class SpectralEncoder(nn.Module):
         # Forward pass of stacked layers (n-1) layers.
         for layer in self.layers:
             x = layer(x)
+        x = self.activation(x)
 
         # Compute mean vector
         mean_vector = self.mean_layer(x)
@@ -233,30 +234,31 @@ class SpectralSpatialDecoder(nn.Module):
 
         if layers <= 1:
             self.layers.append(
-                ("linear", nn.Linear(ld, output_size, device=device))
+                ("linear1", nn.Linear(ld, output_size, device=device))
             )
-            self.layers.append(("sigmoid", nn.Sigmoid()))
+            self.layers.append(("sigmoid1", nn.Sigmoid()))
             self.stack = nn.Sequential(OrderedDict(self.layers))
             return
 
         # Initial layer
         self.layers.append(
-            ("linear", nn.Linear(ld, hidden_size, device=device))
+            ("linear1", nn.Linear(ld, hidden_size, device=device))
         )
-        self.layers.append(("relu", nn.ReLU()))
+        self.layers.append(("relu1", nn.ReLU()))
 
         # Middle layers
-        for _ in range(1, layers - 1):
+        for i in range(1, layers-1):
             self.layers.append(
-                ("linear", nn.Linear(hidden_size, hidden_size, device=device))
+                (f"linear{i+1}",
+                 nn.Linear(hidden_size, hidden_size, device=device))
             )
-            self.layers.append(("relu", nn.ReLU()))
+            self.layers.append((f"relu{i+1}", nn.ReLU()))
 
         # Last layer
         self.layers.append(
-            ("linear", nn.Linear(hidden_size, output_size, device=device))
+            (f"linear{layers}", nn.Linear(hidden_size, output_size, device=device))
         )
-        self.layers.append(("sigmoid", nn.Sigmoid()))
+        self.layers.append((f"sigmoid{layers}", nn.Sigmoid()))
 
         # Generate the full sequential stack
         self.stack = nn.Sequential(OrderedDict(self.layers))
@@ -319,5 +321,6 @@ class SpatialRevisedVAE(nn.Module):
         Reconstructed pixel vector after encoding then decoding.
         """
         z = self.encoder(x)
+        # print("\nencoded", z, z.size())
         return self.decoder(z)
 

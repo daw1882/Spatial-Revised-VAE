@@ -78,7 +78,6 @@ class SpectralEncoder(nn.Module):
         self.std_layer = nn.Linear(std_layer_input_size, ld, device=device)
 
         self.stack = nn.Sequential(OrderedDict(self.layers))
-        print(self.stack)
 
     def forward(self, x):
         """
@@ -263,7 +262,6 @@ class SpectralSpatialDecoder(nn.Module):
         self.layers.append(
             (f"linear{layers}", nn.Linear(hidden_size, output_size, device=device))
         )
-        self.layers.append(("batchnorm", nn.BatchNorm1d(output_size)))
         self.layers.append((f"sigmoid{layers}", nn.Sigmoid()))
 
         # Generate the full sequential stack
@@ -327,6 +325,5 @@ class SpatialRevisedVAE(nn.Module):
         Reconstructed pixel vector after encoding then decoding.
         """
         z = self.encoder(x)
-        # print("\nencoded", z, z.size())
         return self.decoder(z)
 

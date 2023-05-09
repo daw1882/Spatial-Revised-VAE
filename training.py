@@ -123,8 +123,10 @@ if __name__ == '__main__':
                 outputs = model(batch)
 
                 input_vector = utils.extract_spectral_data(batch, window_size)
-                # print("original", input_vector, input_vector.size())
-                # print("decoded", outputs, outputs.size())
+                print("\noriginal\n", input_vector, input_vector.size())
+                print("\ndecoded\n", outputs, outputs.size())
+                # sub = ((input_vector - outputs)**2).sum(dim=1).mean()
+                # print("\nsubtract\n", sub, sub.size())
 
                 # Compute the loss and its gradients
                 reconstruction_term = reconstruction_loss(input_vector, outputs)

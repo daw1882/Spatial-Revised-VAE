@@ -4,7 +4,6 @@ Authors: Brock Dyer, Dade Wood
 CSCI 736
 """
 
-from math import floor
 import torch
 
 
@@ -14,8 +13,10 @@ def compute_kernel_sizes(s, num_layers):
 
     Params
     ------
-    s: The size of the neighbor window.
-    num_layers: Number of layers in the network.
+    s
+        The size of the neighbor window.
+    num_layers
+        Number of layers in the network.
 
     Return
     ------
@@ -24,7 +25,7 @@ def compute_kernel_sizes(s, num_layers):
     kernels = []
     size = s
     for i in range(num_layers-1):
-        k = floor(size / 2) + 1
+        k = (size // 2) + 1
         size = size - (k - 1)
         kernels.append(k)
     # The last layer in the network sets the kernel to the previous layer's
@@ -39,20 +40,11 @@ def extract_sequential_data(x):
 
     Parameters
     ----------
-    x : The input tensor.
+    x
+        The input tensor.
     """
-    return torch.transpose(torch.flatten(x, start_dim=2, end_dim=3), dim0=1, dim1=2)
-
-
-# def extract_local_data(x):
-#     """
-#     Extract the local sensing data.
-#
-#     Parameters
-#     ----------
-#     x : The input tensor.
-#     """
-#     return torch.transpose(x, 1, 3)
+    return torch.transpose(torch.flatten(x, start_dim=2, end_dim=3),
+                           dim0=1, dim1=2)
 
 
 def extract_spectral_data(x, window_size):
@@ -61,6 +53,7 @@ def extract_spectral_data(x, window_size):
 
     Parameters
     ----------
-    x : The input tensor.
+    x
+        The input tensor.
     """
     return x[:, :, window_size // 2, window_size // 2]

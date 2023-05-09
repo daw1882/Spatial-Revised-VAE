@@ -1,35 +1,53 @@
+"""
+Generate a classification dataset with encoded pixel vectors from a spectral
+image.
+
+Author: Dade Wood
+CSCI 736
+"""
+
+import argparse
+import csv
+import json
+
+import numpy as np
+import pandas as pd
 import scipy
 import torch
 from torch.utils.data import DataLoader
-from spectral_dataset import SpectralImage, SpectralVAEDataset
-import argparse
-from spectral_vae import SpatialRevisedVAE
-import json
-from torchsummary import summary
 from tqdm import tqdm
-from sklearn import svm
-import csv
-import numpy as np
-import pandas as pd
+
+from spectral_dataset import SpectralImage, SpectralVAEDataset
+from spectral_spatial_vae.spectral_vae import SpatialRevisedVAE
 
 
 def make_classification_dataset(model: SpatialRevisedVAE, dataloader, labels):
-    # Note, this is really for fancy display of the progress,
-    # the tqdm is not necessary but the dataloader is for
-    # performing inference in batches
+    """
+    Create a dataset for classification of spectral pixel vectors.
+
+    Parameters
+    ----------
+    model
+        The VAE model for extracting features.
+    dataloader
+        The pytorch dataloader containing spectral pixel information.
+    labels
+        Labels for each pixel vector.
+
+    Returns
+    -------
+    A DataFrame containing the encoded pixel vectors and labels.
+    """
     with open('output.csv', 'w') as f:
         writer = csv.writer(f, lineterminator="\n")
         with tqdm(dataloader, unit="batch") as loader:
             for batch in loader:
-                # you'd call model.decoder(input) for decoding part
                 encoded = model.encoder(batch)
                 writer.writerows(encoded.tolist())
     df = pd.read_csv('output.csv', header=None)
-    print(df.head())
-    print(df.shape)
-    print(labels.shape)
     df['labels'] = labels
     df.to_csv('output.csv', header=False)
+    return df
 
 
 if __name__ == '__main__':
@@ -93,7 +111,7 @@ if __name__ == '__main__':
         s=model_config["window_size"],
         ld=model_config["latent_dims"],
         spectral_bands=img.spectral_bands,
-        layers=model_config["ae_layers"],  # Encoder
+        spec_layers=model_config["ae_layers"],  # Encoder
         ss_layers=model_config["ss_layers"],  # LSTM
         ls_layers=model_config["ls_layers"],  # CNN
         device=device,
@@ -101,9 +119,5 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(args.model))
     model.eval()
     print("Model loaded!")
-    # print("Model Summary:")
-    # summary(model, (img.spectral_bands, model_config["window_size"], model_config["window_size"]))
 
     make_classification_dataset(model, dataloader, labels)
-
-

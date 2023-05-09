@@ -1,11 +1,12 @@
-############################################################
-# Loss functions for the model
-# Author: Brock Dyer
-# CSCI 736
-############################################################
+"""
+Loss functions for the Spectral-Spatial VAE.
 
-import torch.nn as nn
+Authors: Brock Dyer, Dade Wood
+CSCI 736
+"""
+
 import torch
+import torch.nn as nn
 
 MSE = nn.MSELoss()
 
@@ -15,10 +16,12 @@ def reconstruction_loss(input_vector, predicted_vector):
     Compute the reconstruction loss term between the decoded pixel vector and
     the original pixel vector supplied as input.
 
-    Params
-    ------
-    input_vector: The original input pixel vector from the image.
-    predicted_vector: The decoded pixel vector from the decoder network.
+    Parameters
+    ----------
+    input_vector
+        The original input pixel vector from the image.
+    predicted_vector
+        The decoded pixel vector from the decoder network.
 
     Returns
     -------
@@ -32,10 +35,12 @@ def kl_loss(mean_vector, std_vector):
     Compute the kl-divergence loss term between the latent distribution and
     the normal distribution.
 
-    Params
-    ------
-    mean_vector: The mean vector which parameterizes the latent distribution.
-    std_vector: The std vector which parameterizes the latent space.
+    Parameters
+    ----------
+    mean_vector
+        The mean vector which parameterizes the latent distribution.
+    std_vector
+        The std vector which parameterizes the latent space.
 
     Returns
     -------
@@ -52,10 +57,12 @@ def homology_loss(xls, xss):
     Compute the homology loss term. This is a KL-Divergence between the local
     sensing features and the sequential sensing features.
 
-    Params
-    ------
-    xls: The encoding of the local sensing features.
-    xss: The encoding of the sequential sensing features.
+    Parameters
+    ----------
+    xls
+        The encoding of the local sensing features.
+    xss
+        The encoding of the sequential sensing features.
 
     Returns
     -------

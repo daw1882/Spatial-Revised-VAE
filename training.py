@@ -1,39 +1,27 @@
+"""
+Training pipeline for training a Spectral-Spatial VAE.
+
+Author: Dade Wood
+CSCI 736
+"""
+
+import argparse
+import json
+import math
+import os
+from datetime import datetime
+from time import sleep
+
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-
-from spectral_vae import SpatialRevisedVAE
-from spectral_dataset import SpectralVAEDataset, SpectralImage
-from loss import reconstruction_loss
-import utils
-from tqdm import tqdm
-from time import sleep
-from datetime import datetime
-import os
 from torchsummary import summary
-import math
-import json
-import argparse
-import torchvision
+from tqdm import tqdm
 
-
-class EarlyStopper:
-    def __init__(self, patience=1, min_delta=0):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.counter = 0
-        self.min_validation_loss = np.inf
-
-    def early_stop(self, validation_loss):
-        if validation_loss < self.min_validation_loss:
-            self.min_validation_loss = validation_loss
-            self.counter = 0
-        elif validation_loss > (self.min_validation_loss + self.min_delta):
-            self.counter += 1
-            if self.counter >= self.patience:
-                return True
-        return False
-
+from datasets.spectral_dataset import SpectralVAEDataset, SpectralImage
+from spectral_spatial_vae import utils
+from spectral_spatial_vae.loss import reconstruction_loss
+from spectral_spatial_vae.spectral_vae import SpatialRevisedVAE
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -72,17 +60,13 @@ if __name__ == '__main__':
     model_config = config["model"]
     train_config = config["training"]
 
-    # Training Parameters
     model_dir = args.model_dir
-    # image_dir = "/mnt/d/PycharmProjects/nn_data/test"
     image_dir = args.image
     epochs = train_config["epochs"]
     update_iters = 10
     batch_size = train_config["batch_size"]
     window_size = model_config["window_size"]
     latent_dimensions = model_config["latent_dims"]
-
-    # Optimizer Parameters
     learn_rate = train_config["learn_rate"]
 
     if not os.path.exists(model_dir):
@@ -97,21 +81,21 @@ if __name__ == '__main__':
     dataloader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True, num_workers=0,
     )
-    print("Dataloader created!")
+    print("datasets created!")
 
     model = SpatialRevisedVAE(
         s=window_size,
         ld=latent_dimensions,
         spectral_bands=spec_img.spectral_bands,
-        layers=model_config["ae_layers"],       # Encoder
+        spec_layers=model_config["ae_layers"],       # Encoder
         ss_layers=model_config["ss_layers"],    # LSTM
         ls_layers=model_config["ls_layers"],    # CNN
         device=device,
     ).to(device)
 
-    # Not working on cuda for some reason
-    # print("Model Summary:")
-    # summary(model, (spec_img.spectral_bands, window_size, window_size))
+    if device.type == "cpu":
+        print("Model Summary:")
+        summary(model, (spec_img.spectral_bands, window_size, window_size))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learn_rate)
 
@@ -119,7 +103,6 @@ if __name__ == '__main__':
     sleep(0.5)
     best_loss = 1_000_000.
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    early_stopper = EarlyStopper(patience=3, min_delta=10)
     for epoch in range(epochs):
         with tqdm(dataloader, miniters=update_iters, unit="batch") as t_epoch:
             # Make sure gradient tracking is on, and do a pass over the data

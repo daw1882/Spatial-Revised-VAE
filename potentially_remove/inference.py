@@ -1,11 +1,12 @@
 import torch
 from torch.utils.data import DataLoader
-from spectral_dataset import SpectralImage, SpectralVAEDataset
+from datasets.spectral_dataset import SpectralImage, SpectralVAEDataset
 import argparse
-from spectral_vae import SpatialRevisedVAE
+from spectral_spatial_vae.spectral_vae import SpatialRevisedVAE
 import json
 from torchsummary import summary
 from tqdm import tqdm
+import cv2
 
 
 def encode(model: SpatialRevisedVAE, dataloader):
@@ -14,9 +15,17 @@ def encode(model: SpatialRevisedVAE, dataloader):
     # performing inference in batches
     with tqdm(dataloader, unit="batch") as loader:
         for batch in loader:
+            print(batch, batch.size())
             # you'd call model.decoder(input) for decoding part
-            output = model.encoder(batch)
-            # currently do nothing with the output
+            output_e = model.encoder(batch)
+            output = model.decoder(output_e)
+            output = output.cpu().detach().numpy()
+            print(output.shape)
+            for channel in range(51):
+                img = output[:, channel]
+                img_show = cv2.normalize(img.reshape(89, 89), None, 0, 1.0,
+                                         cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+                cv2.imwrite(f"images/{channel}_decode_result.tif", img_show)
 
 
 if __name__ == '__main__':
@@ -51,7 +60,7 @@ if __name__ == '__main__':
     dataset = SpectralVAEDataset(img, model_config["window_size"],
                                  device=device)
     dataloader = DataLoader(
-        dataset, batch_size=1024, shuffle=False, num_workers=0,
+        dataset, batch_size=1, shuffle=False, num_workers=0,
     )
     print(len(dataset))
 

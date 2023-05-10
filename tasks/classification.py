@@ -1,3 +1,9 @@
+"""
+Classify pixels of an encoded image.
+
+Author: Dade Wood
+CSCI 736
+"""
 import argparse
 
 import numpy as np

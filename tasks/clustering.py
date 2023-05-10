@@ -1,18 +1,16 @@
-import numpy
-from sklearn import svm
-from sklearn.neural_network import MLPClassifier
-from sklearn.cluster import KMeans, DBSCAN
-from sklearn.model_selection import train_test_split, cross_validate
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score
+"""
+Cluster an image for finding text in a reagant treated document.
+
+Author: Dade Wood
+CSCI 736
+"""
 import argparse
 
 import numpy as np
 import pandas as pd
 from PIL import Image
-from matplotlib import colormaps
 from matplotlib import cm, colors
-
+from sklearn.cluster import KMeans
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -54,7 +52,9 @@ if __name__ == '__main__':
     print("--------------------")
     print("Making image...")
     norm = colors.Normalize(vmin=0.0, vmax=1.0, clip=True)
-    mapper = cm.ScalarMappable(norm=norm, cmap=colormaps['Set3'])
+    pallette = ["#f8fa0d", "#3143b9"]
+    cmap = colors.LinearSegmentedColormap.from_list(name="", colors=pallette)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cmap)
     pixels = labels.reshape(args.image_height, args.image_width)
     pixels = np.uint8(mapper.to_rgba(pixels)*255)
     img = Image.fromarray(pixels)

@@ -1,16 +1,22 @@
+"""
+Classify an encoded image dataset.
+
+Author: Dade Wood
+CSCI 736
+"""
+import argparse
+import json
 import time
 
+import cv2
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from datasets.spectral_dataset import SpectralImage, SpectralVAEDataset
-import argparse
-from spectral_spatial_vae.spectral_vae import SpatialRevisedVAE
-import json
-from torchsummary import summary
 from tqdm import tqdm
-import cv2
+
+from datasets.spectral_dataset import SpectralImage, SpectralVAEDataset
 from spectral_spatial_vae import utils
+from spectral_spatial_vae.spectral_vae import SpatialRevisedVAE
 
 
 def encode(model: SpatialRevisedVAE, dataloader, width, height, s):
@@ -39,8 +45,6 @@ def encode(model: SpatialRevisedVAE, dataloader, width, height, s):
         cv2.imwrite(f"images/{channel}_original.tif", orig_show.reshape(
             height, width))
         img = reconstructed[:, channel]
-        # img_show = cv2.normalize(img.reshape(111, 111), None, 0, 1.0,
-        #                          cv2.NORM_MINMAX, dtype=cv2.CV_32F)
         img_show = img.reshape(height, width)
         cv2.imwrite(f"images/{channel}_decode_result.tif", img_show)
 
@@ -65,12 +69,6 @@ if __name__ == '__main__':
         required=True,
         type=str,
     )
-    # parser.add_argument(
-    #     '--output_dir',
-    #     help='Path to output the dataset to.',
-    #     required=True,
-    #     type=str,
-    # )
     parser.add_argument(
         '--data_key',
         help='Key for accessing the data from a .mat file.',
@@ -120,9 +118,6 @@ if __name__ == '__main__':
     model.eval()
     print("Model loaded!")
     time.sleep(0.5)
-    # print("Model Summary:")
-    # summary(model, (model_config["window_size"], model_config["window_size"],
-    #                 img.spectral_bands))
 
     encode(model, dataloader, args.image_width, args.image_height,
            model_config["window_size"])

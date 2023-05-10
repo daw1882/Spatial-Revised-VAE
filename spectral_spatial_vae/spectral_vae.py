@@ -1,17 +1,19 @@
-############################################################
-# Sequential feature encoding using VAE
-# Author: Brock Dyer
-# CSCI 736
-############################################################
+"""
+Sequential feature encoding using spatial revised VAE.
+
+Authors: Brock Dyer, Dade Wood
+CSCI 736
+"""
+
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
-from sequential_sensing import SequentialSensingNet
-from local_sensing import LocalSensingNet
-import utils
-from collections import OrderedDict
 
-from loss import homology_loss, kl_loss
+import spectral_spatial_vae.utils as utils
+from spectral_spatial_vae.local_sensing import LocalSensingNet
+from spectral_spatial_vae.loss import homology_loss, kl_loss
+from spectral_spatial_vae.sequential_sensing import SequentialSensingNet
 
 
 class SpectralEncoder(nn.Module):
@@ -23,10 +25,13 @@ class SpectralEncoder(nn.Module):
 
     Parameters
     ----------
-    spectral_bands : The number of spectral bands.
-    ld : The dimension of the latent vector.
+    spectral_bands
+        The number of spectral bands.
+    ld
+        The dimension of the latent vector.
         This should always be a multiple of 4.
-    layers : The number of dense stacked layers in the encoder.
+    layers
+        The number of dense stacked layers in the encoder.
         The last layer splits into the mean and std layers.
     """
 
@@ -36,9 +41,12 @@ class SpectralEncoder(nn.Module):
 
         Parameters
         ----------
-        spectral_bands : The number of spectral bands.
-        ld : The dimension of the latent vector.
-        layers : The number of dense stacked layers in the encoder.
+        spectral_bands
+            The number of spectral bands.
+        ld
+            The dimension of the latent vector.
+        layers
+            The number of dense stacked layers in the encoder.
             Default is 3 layers.
         """
         super(SpectralEncoder, self).__init__()
@@ -47,16 +55,20 @@ class SpectralEncoder(nn.Module):
         std_layer_input_size = hidden_size
         mean_layer_input_size = hidden_size
         mean_layer_output_size = ld // 2
-
         self.layers = []
 
         if layers >= 2:
-            # First layer is 
-            self.layers.append(nn.Linear(spectral_bands, hidden_size,
-                                         device=device))
-            for _ in range(1, layers - 1):
-                self.layers.append(nn.Linear(hidden_size, hidden_size,
-                                             device=device))
+            self.layers.append(
+                ("linear1",
+                 nn.Linear(spectral_bands, hidden_size, device=device))
+            )
+            self.layers.append(("relu1", nn.ReLU()))
+            for i in range(1, layers - 1):
+                self.layers.append(
+                    (f"linear{i+1}",
+                     nn.Linear(hidden_size, hidden_size, device=device))
+                )
+                self.layers.append((f"relu{i + 1}", nn.ReLU()))
         else:
             mean_layer_input_size = spectral_bands
             std_layer_input_size = spectral_bands
@@ -65,7 +77,7 @@ class SpectralEncoder(nn.Module):
                                     mean_layer_output_size, device=device)
         self.std_layer = nn.Linear(std_layer_input_size, ld, device=device)
 
-        self.activation = nn.Sigmoid()
+        self.stack = nn.Sequential(OrderedDict(self.layers))
 
     def forward(self, x):
         """
@@ -73,7 +85,8 @@ class SpectralEncoder(nn.Module):
 
         Parameters
         ----------
-        x : A pixel vector.
+        x
+            A pixel vector.
 
         Returns
         -------
@@ -83,8 +96,7 @@ class SpectralEncoder(nn.Module):
         """
 
         # Forward pass of stacked layers (n-1) layers.
-        for layer in self.layers:
-            x = layer(x)
+        x = self.stack(x)
 
         # Compute mean vector
         mean_vector = self.mean_layer(x)
@@ -102,7 +114,8 @@ def split_mean_std(spec_encoder_result) -> tuple:
 
     Parameters
     ----------
-    spec_encoding_result: The output from spectral encoding network.
+    spec_encoder_result
+        The output from spectral encoding network.
 
     Returns
     -------
@@ -115,24 +128,27 @@ def split_mean_std(spec_encoder_result) -> tuple:
 
 
 class SpectralSpatialEncoder(nn.Module):
-    """
-    The combined encoder model. Uses the spatial features to modify the mean
-    of the variational auto encoder.
-    """
 
     def __init__(self, s, ld, spectral_bands, layers, ss_layers, ls_layers,
                  device) -> None:
         """
-        Initialize the module.
+        The combined encoder model. Uses the spatial features to modify the mean
+        of the variational auto encoder.
 
         Parameters
         ----------
-        s : The neighborhood window size.
-        ld : The number of dimensions in the latent space.
-        spectral_bands : The number of spectral bands in the image.
-        layers : The number of layers in the spatial encoder.
-        ss_layers : The number of layers in the sequential sensing encoder.
-        ls_layers : The number of layers in the local sensing encoder.
+        s
+            The neighborhood window size.
+        ld
+            The number of dimensions in the latent space.
+        spectral_bands
+            The number of spectral bands in the image.
+        layers
+            The number of layers in the spatial encoder.
+        ss_layers
+            The number of layers in the sequential sensing encoder.
+        ls_layers
+            The number of layers in the local sensing encoder.
         """
         super(SpectralSpatialEncoder, self).__init__()
         self.device = device
@@ -148,15 +164,18 @@ class SpectralSpatialEncoder(nn.Module):
         self.kl = 0
         self.homology = 0
 
-    # Data Tensor: (#pixel vectors, SxS, N) (all at once)
-    # Data Tensor: (SxS, N) one at a time.
     def forward(self, x):
         """
         Perform the forward pass.
 
         Parameters
         ----------
-        x : The input tensor.
+        x
+            The input tensor.
+
+        Returns
+        -------
+        An encoded pixel vector with a number of latent dimensions.
         """
 
         # Split the data for each of the encoder stacks.
@@ -165,16 +184,15 @@ class SpectralSpatialEncoder(nn.Module):
         # Dimension of output: (batch, s^2, N)
         seq_sensing_data = utils.extract_sequential_data(x)
         # Dimension of output: (batch, N, s, s)
-        # loc_sensing_data = utils.extract_local_data(x)
         loc_sensing_data = x
-        # Dimension of output: (batch, 1, N), the center pixel vector
+        # Dimension of output: (batch, N, 1), the center pixel vector
         spectral_encoding_data = utils.extract_spectral_data(x, self.neighbor_window_size)
-
-        # Pass data to each encoder
         
         # Output shape for spatial encodings is (batch, ld // 4)
-        xss = torch.squeeze(self.spat_encoder_ss(seq_sensing_data))
-        xls = torch.squeeze(self.spat_encoder_ls(loc_sensing_data))
+        xss = torch.squeeze(self.spat_encoder_ss(seq_sensing_data), dim=2)
+        xls = torch.squeeze(self.spat_encoder_ls(loc_sensing_data), dim=(2, 3))
+
+        # Loss for keeping xls and xss homologous
         self.homology = homology_loss(xls, xss)
 
         # Output shape for spectral mean is (batch, ld // 2)
@@ -184,13 +202,12 @@ class SpectralSpatialEncoder(nn.Module):
         # Revise the mean by concatenating the vectors.
         # Concatenation order is xls + xss + mv
         mv = torch.concat((xls, xss, mv), 1)
-        # TODO: look into the exp
         sv = torch.exp(sv)
 
         # Re-parameterization trick
         z = mv + sv * self.norm.sample(mv.shape).to(self.device)
 
-        # compute the KL divergence and store in the class
+        # Compute the KL divergence and store in the class
         self.kl = kl_loss(mv, sv)
 
         return z
@@ -200,13 +217,16 @@ class SpectralSpatialDecoder(nn.Module):
 
     def __init__(self, ld, spectral_bands, layers, device) -> None:
         """
-        Initialize the module.
+        Create the spectral spatial decoder for reconstruction.
 
         Parameters
         ----------
-        ld : The number of dimensions in the latent space.
-        spectral_bands : The number of spectral bands.
-        layers : The number of layers in the spatial encoder.
+        ld
+            The number of dimensions in the latent space.
+        spectral_bands
+            The number of spectral bands.
+        layers
+            The number of layers in the spatial encoder.
         """
         super(SpectralSpatialDecoder, self).__init__()
 
@@ -217,48 +237,93 @@ class SpectralSpatialDecoder(nn.Module):
         self.layers = []
 
         if layers <= 1:
-            self.layers.append(("linear",
-                                nn.Linear(ld, output_size, device=device)))
-            self.layers.append(("sigmoid", nn.Sigmoid()))
+            self.layers.append(
+                ("linear1", nn.Linear(ld, output_size, device=device))
+            )
+            self.layers.append(("sigmoid1", nn.Sigmoid()))
             self.stack = nn.Sequential(OrderedDict(self.layers))
             return
 
-        self.layers.append(("linear",
-                            nn.Linear(ld, hidden_size, device=device)))
-        self.layers.append(("relu", nn.ReLU()))
-        # Middle layers
-        for _ in range(1, layers - 1):
-            self.layers.append(("linear",
-                                nn.Linear(hidden_size, hidden_size, device=device)))
-            self.layers.append(("relu", nn.ReLU()))
+        # Initial layer
+        self.layers.append(
+            ("linear1", nn.Linear(ld, hidden_size, device=device))
+        )
+        self.layers.append(("relu1", nn.ReLU()))
 
-        self.layers.append(("linear",
-                            nn.Linear(hidden_size, output_size, device=device)))
-        self.layers.append(("sigmoid", nn.Sigmoid()))
+        # Middle layers
+        for i in range(1, layers-1):
+            self.layers.append(
+                (f"linear{i+1}",
+                 nn.Linear(hidden_size, hidden_size, device=device))
+            )
+            self.layers.append((f"relu{i+1}", nn.ReLU()))
+
+        # Last layer
+        self.layers.append(
+            (f"linear{layers}", nn.Linear(hidden_size, output_size, device=device))
+        )
+        self.layers.append((f"sigmoid{layers}", nn.Sigmoid()))
+
+        # Generate the full sequential stack
         self.stack = nn.Sequential(OrderedDict(self.layers))
 
     def forward(self, x):
         """
         Perform forward pass.
+
+        Parameters
+        ----------
+        x
+            The encoded spectral spatial pixel vector to be decoded.
         """
         return self.stack(x)
 
 
 class SpatialRevisedVAE(nn.Module):
-    def __init__(self, s, ld, spectral_bands, device, layers=3, ss_layers=3,
+    def __init__(self, s, ld, spectral_bands, device, spec_layers=3, ss_layers=3,
                  ls_layers=3):
+        """
+        The complete spatial revised VAE model.
+
+        Parameters
+        ----------
+        s
+            Window size around pixel vectors.
+        ld
+            Number of latent dimensions the encoder will generate.
+        spectral_bands
+            Number of spectral bands from the input.
+        device
+            The device to load and run the model on.
+        spec_layers
+            Number of layers for the spectral encoder and decoder.
+        ss_layers
+            Number of layers for the sequential sensing LSTM.
+        ls_layers
+            Number of layers for the local sensing CNN.
+        """
         super(SpatialRevisedVAE, self).__init__()
         self.spectral_bands = spectral_bands
-        self.encoder = SpectralSpatialEncoder(s, ld, spectral_bands, layers,
-                                              ss_layers, ls_layers, device)
-        self.decoder = SpectralSpatialDecoder(ld, spectral_bands, layers,
-                                              device)
-        # self.mu = None
-        # self.std = None
+        self.encoder = SpectralSpatialEncoder(
+            s, ld, spectral_bands, spec_layers, ss_layers, ls_layers, device
+        )
+        self.decoder = SpectralSpatialDecoder(
+            ld, spectral_bands, spec_layers, device
+        )
 
     def forward(self, x):
+        """
+        Perform forward pass by encoding and decoding.
+
+        Parameters
+        ----------
+        x
+            Pixel vector window from a spectral image.
+
+        Returns
+        -------
+        Reconstructed pixel vector after encoding then decoding.
+        """
         z = self.encoder(x)
-        # self.mu = z[0]
-        # self.std = z[1]
         return self.decoder(z)
 

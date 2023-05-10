@@ -1,39 +1,27 @@
+"""
+Training pipeline for training a Spectral-Spatial VAE.
+
+Author: Dade Wood
+CSCI 736
+"""
+
+import argparse
+import json
+import math
+import os
+from datetime import datetime
+from time import sleep
+
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
-
-from spectral_vae import SpatialRevisedVAE
-from spectral_dataset import SpectralVAEDataset, SpectralImage
-from loss import reconstruction_loss
-import utils
-from tqdm import tqdm
-from time import sleep
-from datetime import datetime
-import os
+from torch.utils.data import DataLoader, random_split
 from torchsummary import summary
-import math
-import json
-import argparse
-import torchvision
+from tqdm import tqdm
 
-
-class EarlyStopper:
-    def __init__(self, patience=1, min_delta=0):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.counter = 0
-        self.min_validation_loss = np.inf
-
-    def early_stop(self, validation_loss):
-        if validation_loss < self.min_validation_loss:
-            self.min_validation_loss = validation_loss
-            self.counter = 0
-        elif validation_loss > (self.min_validation_loss + self.min_delta):
-            self.counter += 1
-            if self.counter >= self.patience:
-                return True
-        return False
-
+from datasets.spectral_dataset import SpectralVAEDataset, SpectralImage
+from spectral_spatial_vae import utils
+from spectral_spatial_vae.loss import reconstruction_loss
+from spectral_spatial_vae.spectral_vae import SpatialRevisedVAE
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -72,17 +60,13 @@ if __name__ == '__main__':
     model_config = config["model"]
     train_config = config["training"]
 
-    # Training Parameters
     model_dir = args.model_dir
-    # image_dir = "/mnt/d/PycharmProjects/nn_data/test"
     image_dir = args.image
     epochs = train_config["epochs"]
-    update_iters = 10
+    update_iters = 1
     batch_size = train_config["batch_size"]
     window_size = model_config["window_size"]
     latent_dimensions = model_config["latent_dims"]
-
-    # Optimizer Parameters
     learn_rate = train_config["learn_rate"]
 
     if not os.path.exists(model_dir):
@@ -92,10 +76,13 @@ if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(f"Training on device: {device}.")
 
-    spec_img = SpectralImage(image_dir, data_type=args.data_type, data_key=args.data_key)
+    spec_img = SpectralImage(image_dir, data_type=args.data_type,
+                             data_key=args.data_key)
     dataset = SpectralVAEDataset(spec_img, window_size, device)
+    train_data, _ = random_split(dataset, [train_config["train_split"],
+                                           1-train_config["train_split"]])
     dataloader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, num_workers=0,
+        train_data, batch_size=batch_size, shuffle=True, num_workers=0,
     )
     print("Dataloader created!")
 
@@ -103,24 +90,23 @@ if __name__ == '__main__':
         s=window_size,
         ld=latent_dimensions,
         spectral_bands=spec_img.spectral_bands,
-        layers=model_config["ae_layers"],       # Encoder
+        spec_layers=model_config["ae_layers"],  # Encoder
         ss_layers=model_config["ss_layers"],    # LSTM
         ls_layers=model_config["ls_layers"],    # CNN
         device=device,
     ).to(device)
+    print("Model initialized!")
 
-    # Not working on cuda for some reason
-    # print("Model Summary:")
-    # summary(model, (spec_img.spectral_bands, window_size, window_size))
+    if device.type == "cpu":
+        print("Model Summary:")
+        summary(model, (spec_img.spectral_bands, window_size, window_size))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learn_rate)
-    # optimizer = torch.optim.SGD(model.parameters(), lr=0.00001, momentum=0.9)
 
     print("Beginning Training!")
     sleep(0.5)
     best_loss = 1_000_000.
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    early_stopper = EarlyStopper(patience=3, min_delta=10)
     for epoch in range(epochs):
         with tqdm(dataloader, miniters=update_iters, unit="batch") as t_epoch:
             # Make sure gradient tracking is on, and do a pass over the data
@@ -137,25 +123,17 @@ if __name__ == '__main__':
                 outputs = model(batch)
 
                 input_vector = utils.extract_spectral_data(batch, window_size)
+                # print("\nOriginal\n", input_vector, input_vector.size())
+                # print("\nDecoded\n", outputs, outputs.size())
 
                 # Compute the loss and its gradients
-                reconstruction_term = reconstruction_loss(input_vector, outputs)
+                reconstruction_term = reconstruction_loss(input_vector,
+                                                          outputs)
                 homology_term = model.encoder.homology
                 kl_term = model.encoder.kl
-                # print("reconstruction loss", reconstruction_term)
-                # print("homology loss", homology_term)
-                # print("kl loss", kl_term)
-
-                # if i > 1000:
-                #     loss = reconstruction_term + kl_term + homology_term
-                # else:
-                #     loss = reconstruction_term + homology_term
                 loss = reconstruction_term + kl_term + homology_term
-                # if early_stopper.early_stop(loss):
-                #     break
-                if math.isnan(loss.item()):
-                    raise ValueError("Loss went to nan.")
-                losses.append(loss.item())
+                losses.append([loss.item(), reconstruction_term.item(),
+                               kl_term.item(), homology_term.item()])
                 loss.backward()
 
                 # Adjust learning weights
@@ -168,9 +146,19 @@ if __name__ == '__main__':
                         "kl": "{:.4f}".format(kl_term.item()),
                         "homology": "{:.4f}".format(homology_term.item()),
                     })
+                if math.isnan(loss.item()):
+                    raise ValueError("Loss went to nan.")
+                if i == len(t_epoch)-1:
+                    avg_loss = np.average(np.array(losses), axis=0)
+                    t_epoch.set_postfix({
+                        "loss": "{:.4f}".format(avg_loss[0]),
+                        "reconstruction": "{:.4f}".format(avg_loss[1]),
+                        "kl": "{:.4f}".format(avg_loss[2]),
+                        "homology": "{:.4f}".format(avg_loss[3]),
+                    })
 
-        avg_loss = np.average(losses)
-        if avg_loss < best_loss:
-            best_loss = avg_loss
+        avg_loss = np.average(np.array(losses), axis=0)
+        if avg_loss[0] < best_loss:
+            best_loss = avg_loss[0]
             model_path = '{}/model_{}_{}.pt'.format(model_dir, timestamp, epoch)
             torch.save(model.state_dict(), model_path)

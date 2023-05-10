@@ -1,6 +1,9 @@
 # Spatial-Revised-VAE
 This is a repository containing the model architecture from "Spatial Revising Variational Autoencoder-Based Feature Extraction Method for Hyperspectral Images" as well as scripts for training, generating encoded datasets, and running task heads. For any of the below scripts, use the `-h` or `--help` flag for more information on how to run.
 
+## Installation
+`pip -r requirements.txt`
+
 ## Training
 Training of the model requires a directory containing hyperspectral image bands or a .mat file containing the spectral image data. Examples of configuration files used for training are in the `configs` folder.
 
